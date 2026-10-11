@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "secrets:scan": "node scripts/scan-secrets.mjs",
+    "audit:deps": "npm audit --audit-level=high"
+
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.1",

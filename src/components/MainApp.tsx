@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   LayoutDashboard, Swords, Backpack, Skull, 
-  Users, BookOpen, Database, Sparkles
+  Users, BookOpen, Database, Sparkles, LogOut
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { 
@@ -21,6 +21,8 @@ import { Spellbook } from '@/components/spells/Spellbook';
 export default function MainApp() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [supabaseActive, setSupabaseActive] = useState<boolean>(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // App State
   const [combatants, setCombatants] = useState<Combatant[]>(INITIAL_COMBATANTS);
@@ -54,16 +56,38 @@ export default function MainApp() {
     const configured = isSupabaseConfigured();
     setSupabaseActive(configured);
 
-    if (configured) {
-      let cancelled = false;
-      loadDataFromSupabase().catch(err => {
-        if (!cancelled) console.warn('Supabase fetch failed, fallback to local state:', err);
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
+    if (!configured) return;
+
+    let cancelled = false;
+
+    // Sesión del usuario (el middleware ya exige login para acceder aquí).
+    supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) setUserEmail(data.user?.email ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!cancelled) setUserEmail(session?.user?.email ?? null);
+    });
+
+    loadDataFromSupabase().catch(err => {
+      if (!cancelled) console.warn('Supabase fetch failed, fallback to local state:', err);
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
   }, [loadDataFromSupabase]);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      // La ruta del servidor revoca el token y limpia las cookies httpOnly.
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      await supabase.auth.signOut();
+      window.location.assign('/login');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   const handleSendMonsterToCombat = (monster: Monster) => {
     const initRoll = Math.floor(Math.random() * 20) + 1 + Math.floor((monster.stats.dex - 10) / 2);
@@ -135,13 +159,23 @@ export default function MainApp() {
             {/* Supabase Status Pill */}
             <div className="flex items-center gap-2">
               {supabaseActive ? (
-                <span className="flex items-center gap-1.5 text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full font-medium">
-                  <Database className="w-3.5 h-3.5 text-emerald-400" /> Supabase Conectado
+                <span className="flex items-center gap-1.5 text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full font-medium" title={userEmail ?? undefined}>
+                  <Database className="w-3.5 h-3.5 text-emerald-400" /> {userEmail ?? 'Conectado'}
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 text-xs bg-amber-950/60 text-amber-300 border border-amber-800/80 px-3 py-1 rounded-full font-medium" title="Modo local activado. Conecta Supabase en .env.local para sincronización en la nube.">
                   <Database className="w-3.5 h-3.5 text-amber-400" /> Modo Local (Demo)
                 </span>
+              )}
+              {supabaseActive && (
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-300 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-3 py-1 rounded-full font-medium transition disabled:opacity-60"
+                  title="Cerrar sesión"
+                >
+                  <LogOut className="w-3.5 h-3.5" /> Salir
+                </button>
               )}
             </div>
           </div>

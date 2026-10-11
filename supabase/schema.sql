@@ -9,8 +9,9 @@ CREATE TABLE IF NOT EXISTS public.campaigns (
     name TEXT NOT NULL,
     description TEXT,
     system TEXT DEFAULT 'D&D 5e',
-    dm_user_id UUID, -- References auth.users(id) when auth is activated
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    dm_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Propietario de la campaña
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT campaigns_name_len CHECK (char_length(name) BETWEEN 1 AND 200)
 );
 
 -- 2. MONSTERS TABLE
@@ -113,31 +114,233 @@ CREATE TABLE IF NOT EXISTS public.dm_notes (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ROW LEVEL SECURITY (RLS) POLICIES
-ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.monsters ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.spells ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.npcs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.encounters ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.initiative_combatants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.dm_notes ENABLE ROW LEVEL SECURITY;
+-- =====================================================================
+-- ROW LEVEL SECURITY (RLS): ACCESO POR PROPIETARIO, NO PÚBLICO
+-- Regla: sin política explícita, no hay acceso. Las políticas públicas
+-- anteriores (USING (true)) quedan eliminadas por completo.
+-- =====================================================================
 
--- Allow public / anon access policies (o restricción por auth.uid())
-CREATE POLICY "Allow public access campaigns" ON public.campaigns FOR ALL USING (true);
-CREATE POLICY "Allow public access monsters" ON public.monsters FOR ALL USING (true);
-CREATE POLICY "Allow public access spells" ON public.spells FOR ALL USING (true);
-CREATE POLICY "Allow public access npcs" ON public.npcs FOR ALL USING (true);
-CREATE POLICY "Allow public access items" ON public.items FOR ALL USING (true);
-CREATE POLICY "Allow public access encounters" ON public.encounters FOR ALL USING (true);
-CREATE POLICY "Allow public access initiative_combatants" ON public.initiative_combatants FOR ALL USING (true);
-CREATE POLICY "Allow public access dm_notes" ON public.dm_notes FOR ALL USING (true);
+-- La tabla spells es un compendio compartido: legible por usuarios
+-- autenticados, escribible solo por su creador.
+ALTER TABLE public.spells ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- RLS habilitado Y forzado (aplica también al dueño de la tabla/rol service)
+ALTER TABLE public.campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.campaigns FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.monsters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.monsters FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.spells ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.spells FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.npcs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.npcs FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.items FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.encounters ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.encounters FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.initiative_combatants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.initiative_combatants FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.dm_notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dm_notes FORCE ROW LEVEL SECURITY;
+
+-- Eliminar cualquier política heredada de accesos públicos
+DROP POLICY IF EXISTS "Allow public access campaigns" ON public.campaigns;
+DROP POLICY IF EXISTS "Allow public access monsters" ON public.monsters;
+DROP POLICY IF EXISTS "Allow public access spells" ON public.spells;
+DROP POLICY IF EXISTS "Allow public access npcs" ON public.npcs;
+DROP POLICY IF EXISTS "Allow public access items" ON public.items;
+DROP POLICY IF EXISTS "Allow public access encounters" ON public.encounters;
+DROP POLICY IF EXISTS "Allow public access initiative_combatants" ON public.initiative_combatants;
+DROP POLICY IF EXISTS "Allow public access dm_notes" ON public.dm_notes;
+
+-- ---------------------------------------------------------------------
+-- Helper: ¿esta fila pertenece a una campaña del usuario autenticado?
+-- SECURITY DEFINER evita bucles de RLS y centraliza la comprobación.
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.is_campaign_owner(p_campaign_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.campaigns c
+    WHERE c.id = p_campaign_id AND c.dm_user_id = auth.uid()
+  );
+$$;
+REVOKE ALL ON FUNCTION public.is_campaign_owner(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_campaign_owner(UUID) TO authenticated;
+
+-- Helper: el combate pertenece a un encuentro de una campaña del usuario
+CREATE OR REPLACE FUNCTION public.is_encounter_owner(p_encounter_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.encounters e
+    WHERE e.id = p_encounter_id AND public.is_campaign_owner(e.campaign_id)
+  );
+$$;
+REVOKE ALL ON FUNCTION public.is_encounter_owner(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_encounter_owner(UUID) TO authenticated;
+
+-- ---------------------------------------------------------------------
+-- CAMPAIGNS: solo el DM propietario
+-- ---------------------------------------------------------------------
+CREATE POLICY "campaigns_select_own" ON public.campaigns
+  FOR SELECT TO authenticated USING (dm_user_id = auth.uid());
+CREATE POLICY "campaigns_insert_own" ON public.campaigns
+  FOR INSERT TO authenticated WITH CHECK (dm_user_id = auth.uid());
+CREATE POLICY "campaigns_update_own" ON public.campaigns
+  FOR UPDATE TO authenticated USING (dm_user_id = auth.uid()) WITH CHECK (dm_user_id = auth.uid());
+CREATE POLICY "campaigns_delete_own" ON public.campaigns
+  FOR DELETE TO authenticated USING (dm_user_id = auth.uid());
+
+-- ---------------------------------------------------------------------
+-- Tablas con campaign_id: acceso solo vía campaña propia del DM
+-- (monsters, npcs, items, encounters, dm_notes)
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['monsters','npcs','items','encounters','dm_notes'] LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_select_own', t);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_insert_own', t);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_update_own', t);
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_delete_own', t);
+
+    EXECUTE format(
+      'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING (public.is_campaign_owner(campaign_id))',
+      t || '_select_own', t);
+    EXECUTE format(
+      'CREATE POLICY %I ON public.%I FOR INSERT TO authenticated WITH CHECK (public.is_campaign_owner(campaign_id))',
+      t || '_insert_own', t);
+    EXECUTE format(
+      'CREATE POLICY %I ON public.%I FOR UPDATE TO authenticated USING (public.is_campaign_owner(campaign_id)) WITH CHECK (public.is_campaign_owner(campaign_id))',
+      t || '_update_own', t);
+    EXECUTE format(
+      'CREATE POLICY %I ON public.%I FOR DELETE TO authenticated USING (public.is_campaign_owner(campaign_id))',
+      t || '_delete_own', t);
+  END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------------
+-- INITIATIVE_COMBATANTS: vía encuentro -> campaña del usuario
+-- ---------------------------------------------------------------------
+DROP POLICY IF EXISTS "initiative_combatants_select_own" ON public.initiative_combatants;
+DROP POLICY IF EXISTS "initiative_combatants_insert_own" ON public.initiative_combatants;
+DROP POLICY IF EXISTS "initiative_combatants_update_own" ON public.initiative_combatants;
+DROP POLICY IF EXISTS "initiative_combatants_delete_own" ON public.initiative_combatants;
+CREATE POLICY "initiative_combatants_select_own" ON public.initiative_combatants
+  FOR SELECT TO authenticated USING (public.is_encounter_owner(encounter_id));
+CREATE POLICY "initiative_combatants_insert_own" ON public.initiative_combatants
+  FOR INSERT TO authenticated WITH CHECK (public.is_encounter_owner(encounter_id));
+CREATE POLICY "initiative_combatants_update_own" ON public.initiative_combatants
+  FOR UPDATE TO authenticated USING (public.is_encounter_owner(encounter_id)) WITH CHECK (public.is_encounter_owner(encounter_id));
+CREATE POLICY "initiative_combatants_delete_own" ON public.initiative_combatants
+  FOR DELETE TO authenticated USING (public.is_encounter_owner(encounter_id));
+
+-- ---------------------------------------------------------------------
+-- SPELLS: compendio compartido (solo lectura para autenticados),
+-- escritura exclusivamente por su creador.
+-- ---------------------------------------------------------------------
+DROP POLICY IF EXISTS "spells_select_authenticated" ON public.spells;
+DROP POLICY IF EXISTS "spells_insert_own" ON public.spells;
+DROP POLICY IF EXISTS "spells_update_own" ON public.spells;
+DROP POLICY IF EXISTS "spells_delete_own" ON public.spells;
+CREATE POLICY "spells_select_authenticated" ON public.spells
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "spells_insert_own" ON public.spells
+  FOR INSERT TO authenticated WITH CHECK (created_by = auth.uid());
+CREATE POLICY "spells_update_own" ON public.spells
+  FOR UPDATE TO authenticated USING (created_by = auth.uid()) WITH CHECK (created_by = auth.uid());
+CREATE POLICY "spells_delete_own" ON public.spells
+  FOR DELETE TO authenticated USING (created_by = auth.uid());
+
+-- ---------------------------------------------------------------------
+-- PRIVILEGIOS: el rol anon NO tiene acceso a ninguna tabla.
+-- Los clientes del navegador usan la sesión del usuario autenticado,
+-- filtrada por las políticas anteriores.
+-- ---------------------------------------------------------------------
+REVOKE ALL ON public.campaigns, public.monsters, public.spells, public.npcs,
+  public.items, public.encounters, public.initiative_combatants, public.dm_notes
+  FROM anon;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.campaigns, public.monsters,
+  public.spells, public.npcs, public.items, public.encounters,
+  public.initiative_combatants, public.dm_notes
+  TO authenticated;
+
+-- ---------------------------------------------------------------------
+-- PROTECCIÓN DE CAMPOS INMUTABLES: impide manipular id, campaign_id,
+-- created_at o dm_user_id por UPDATE (evita "escalada" de registros).
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.protect_immutable_columns()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.id IS DISTINCT FROM OLD.id THEN
+      RAISE EXCEPTION 'Campo inmutable no puede modificarse: id';
+    END IF;
+    IF NEW.created_at IS DISTINCT FROM OLD.created_at THEN
+      RAISE EXCEPTION 'Campo inmutable no puede modificarse: created_at';
+    END IF;
+    IF TG_TABLE_NAME IN ('campaigns') AND NEW.dm_user_id IS DISTINCT FROM OLD.dm_user_id THEN
+      RAISE EXCEPTION 'Campo inmutable no puede modificarse: dm_user_id';
+    END IF;
+    IF NEW.campaign_id IS DISTINCT FROM OLD.campaign_id AND TG_TABLE_NAME <> 'campaigns' THEN
+      RAISE EXCEPTION 'Campo inmutable no puede modificarse: campaign_id';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DO $$
+DECLARE t TEXT;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['campaigns','monsters','spells','npcs','items','encounters','initiative_combatants','dm_notes'] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS trg_protect_immutable ON public.%I', t);
+    EXECUTE format(
+      'CREATE TRIGGER trg_protect_immutable BEFORE UPDATE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.protect_immutable_columns()',
+      t);
+  END LOOP;
+END $$;
+
+-- updated_at automático en dm_notes
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = timezone('utc', now());
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS trg_set_updated_at ON public.dm_notes;
+CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.dm_notes
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- SEED DATA (Datos de Prueba Iniciales)
 
--- 1. Campaña de Prueba
-INSERT INTO public.campaigns (id, name, description, system) VALUES
-('11111111-1111-1111-1111-111111111111', 'La Mina Perdida de Phandelver', 'Campaña clásica de introducción a D&D 5e', 'D&D 5e');
+-- 1. Campaña de Prueba (solo si existe un usuario autenticado de prueba;
+-- con RLS activo, las filas siempre pertenecen a un DM concreto)
+DO $$
+DECLARE v_user UUID;
+BEGIN
+  SELECT id INTO v_user FROM auth.users ORDER BY created_at ASC LIMIT 1;
+  IF v_user IS NOT NULL THEN
+    INSERT INTO public.campaigns (id, name, description, system, dm_user_id)
+    VALUES ('11111111-1111-1111-1111-111111111111', 'La Mina Perdida de Phandelver',
+            'Campaña clásica de introducción a D&D 5e', 'D&D 5e', v_user)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
 
 -- 2. Monstruos Populares
 INSERT INTO public.monsters (campaign_id, name, size, type, alignment, ac, hp_max, speed, stats, cr, traits, actions) VALUES
