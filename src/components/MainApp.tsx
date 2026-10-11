@@ -6,6 +6,7 @@ import {
   Users, BookOpen, Database, Sparkles, LogOut
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { loadBestiary, loadGrimoire, mergeById } from '@/lib/compendium';
 import { 
   INITIAL_COMBATANTS, INITIAL_ITEMS, INITIAL_MONSTERS, 
   INITIAL_NPCS, INITIAL_SPELLS, INITIAL_NOTES 
@@ -32,12 +33,26 @@ export default function MainApp() {
   const [spells, setSpells] = useState<Spell[]>(INITIAL_SPELLS);
   const [notes, setNotes] = useState<DMNote[]>(INITIAL_NOTES);
 
+  // Bestiario + grimorio SRD (data/compendium) como base local de la app.
+  const loadCompendium = useCallback(async () => {
+    try {
+      const [bestiary, grimoire] = await Promise.all([loadBestiary(), loadGrimoire()]);
+      if (bestiary.length) setMonsters(bestiary);
+      if (grimoire.length) setSpells(grimoire);
+    } catch (err) {
+      // Sin compendio generado la app sigue con los datos de ejemplo.
+      console.warn('Compendio no disponible, se usan datos de ejemplo:', err);
+    }
+  }, []);
+
   const loadDataFromSupabase = useCallback(async () => {
+    // Los monstruos/hechizos propios se fusionan sobre el compendio SRD
+    // (por id y por nombre) para no ocultar el bestiario con las filas de la BD.
     const { data: monData } = await supabase.from('monsters').select('*');
-      if (monData && monData.length > 0) setMonsters(monData);
+      if (monData && monData.length > 0) setMonsters(prev => mergeById(prev, monData));
 
       const { data: spellData } = await supabase.from('spells').select('*');
-      if (spellData && spellData.length > 0) setSpells(spellData);
+      if (spellData && spellData.length > 0) setSpells(prev => mergeById(prev, spellData));
 
       const { data: npcData } = await supabase.from('npcs').select('*');
       if (npcData && npcData.length > 0) setNpcs(npcData);
@@ -56,26 +71,32 @@ export default function MainApp() {
     const configured = isSupabaseConfigured();
     setSupabaseActive(configured);
 
-    if (!configured) return;
-
     let cancelled = false;
+    let sub: { subscription: { unsubscribe: () => void } } | undefined;
 
-    // Sesión del usuario (el middleware ya exige login para acceder aquí).
-    supabase.auth.getUser().then(({ data }) => {
-      if (!cancelled) setUserEmail(data.user?.email ?? null);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!cancelled) setUserEmail(session?.user?.email ?? null);
-    });
+    if (configured) {
+      // Sesión del usuario (el middleware ya exige login para acceder aquí).
+      supabase.auth.getUser().then(({ data }) => {
+        if (!cancelled) setUserEmail(data.user?.email ?? null);
+      });
+      sub = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!cancelled) setUserEmail(session?.user?.email ?? null);
+      }).data;
+    }
 
-    loadDataFromSupabase().catch(err => {
-      if (!cancelled) console.warn('Supabase fetch failed, fallback to local state:', err);
+    // Compendio SRD primero (también en modo local); después, si hay Supabase,
+    // las filas propias del usuario se fusionan encima del bestiario.
+    loadCompendium().then(() => {
+      if (cancelled || !configured) return;
+      return loadDataFromSupabase().catch(err => {
+        console.warn('Supabase fetch failed, fallback to local state:', err);
+      });
     });
     return () => {
       cancelled = true;
-      sub.subscription.unsubscribe();
+      sub?.subscription.unsubscribe();
     };
-  }, [loadDataFromSupabase]);
+  }, [loadCompendium, loadDataFromSupabase]);
 
   const handleLogout = async () => {
     setLoggingOut(true);

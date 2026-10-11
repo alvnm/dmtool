@@ -20,6 +20,9 @@ export const Spellbook: React.FC<SpellbookProps> = ({
   const [selectedLevel, setSelectedLevel] = useState<string>('Todos');
   const [selectedSchool, setSelectedSchool] = useState<string>('Todas');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // El grimorio SRD completo (~400 conjuros) se muestra de 60 en 60 para no
+  // montar cientos de tarjetas de golpe.
+  const [visibleCount, setVisibleCount] = useState(60);
 
   // Form State
   const [name, setName] = useState('');
@@ -56,6 +59,10 @@ export const Spellbook: React.FC<SpellbookProps> = ({
     const matchesSchool = selectedSchool === 'Todas' || s.school === selectedSchool;
     return matchesSearch && matchesLevel && matchesSchool;
   });
+  const visibleSpells = filteredSpells.slice(0, visibleCount);
+
+  // El cambio de filtros restaura la paginación visible.
+  React.useEffect(() => { setVisibleCount(60); }, [searchTerm, selectedLevel, selectedSchool]);
 
   const handleSaveSpell = (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,7 +177,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
 
       {/* Grid of Spell Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredSpells.map(spell => (
+        {visibleSpells.map(spell => (
           <div
             key={spell.id}
             className="bg-dungeon-900 border border-dungeon-800 hover:border-dungeon-700 rounded-xl p-5 shadow-lg space-y-4 flex flex-col justify-between transition"
@@ -231,6 +238,18 @@ export const Spellbook: React.FC<SpellbookProps> = ({
           </div>
         ))}
       </div>
+
+      {/* Paginación: mostrar más conjuros del grimorio */}
+      {filteredSpells.length > visibleSpells.length && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => setVisibleCount(c => c + 60)}
+            className="flex items-center gap-2 bg-dungeon-900 hover:bg-dungeon-800 border border-dungeon-700 text-slate-300 hover:text-amber-400 text-sm font-semibold px-5 py-2.5 rounded-lg transition"
+          >
+            Mostrar más conjuros ({visibleSpells.length} de {filteredSpells.length})
+          </button>
+        </div>
+      )}
 
       {/* Modal Add Spell */}
       {isModalOpen && (

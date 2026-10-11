@@ -22,6 +22,9 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
   const [selectedCr, setSelectedCr] = useState<string>('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedMonsterForView, setSelectedMonsterForView] = useState<Monster | null>(null);
+  // Con el bestiario SRD completo (cientos de fichas) se muestran de 60 en 60
+  // para no montar cientos de tarjetas de golpe.
+  const [visibleCount, setVisibleCount] = useState(60);
 
   // Form State
   const [name, setName] = useState('');
@@ -55,6 +58,10 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
     const matchesCr = selectedCr === 'Todos' || m.cr === selectedCr;
     return matchesSearch && matchesCr;
   });
+  const visibleMonsters = filteredMonsters.slice(0, visibleCount);
+
+  // El cambio de filtros restaura la paginación visible.
+  React.useEffect(() => { setVisibleCount(60); }, [searchTerm, selectedCr]);
 
   const handleAddAction = () => {
     if (!actionName.trim() || !actionDesc.trim()) return;
@@ -136,18 +143,17 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
             />
           </div>
-        </div>
+        </div>          <div className="flex items-center gap-2">
+            <select
+              value={selectedCr}
+              onChange={e => setSelectedCr(e.target.value)}
+              className="bg-dungeon-950 border border-dungeon-800 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-amber-500"
+            >
+              {CR_OPTIONS.map(c => (
+                <option key={c} value={c}>CR: {c}</option>
+              ))}
+            </select>
 
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedCr}
-            onChange={e => setSelectedCr(e.target.value)}
-            className="bg-dungeon-950 border border-dungeon-800 rounded-lg px-3 py-2 text-sm text-slate-300 focus:outline-none focus:border-amber-500"
-          >
-            {CR_OPTIONS.map(c => (
-              <option key={c} value={c}>CR: {c}</option>
-            ))}
-          </select>
 
           <button
             onClick={() => setIsModalOpen(true)}
@@ -161,7 +167,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
       {/* Grid of Monster Statblock Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredMonsters.map(m => (
+        {visibleMonsters.map(m => (
           <div
             key={m.id}
             className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/40 rounded-xl p-5 shadow-lg space-y-4 flex flex-col justify-between transition"
@@ -248,6 +254,18 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
           </div>
         ))}
       </div>
+
+      {/* Paginación: mostrar más fichas del bestiario */}
+      {filteredMonsters.length > visibleMonsters.length && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => setVisibleCount(c => c + 60)}
+            className="flex items-center gap-2 bg-dungeon-900 hover:bg-dungeon-800 border border-dungeon-700 text-slate-300 hover:text-amber-400 text-sm font-semibold px-5 py-2.5 rounded-lg transition"
+          >
+            Mostrar más criaturas ({visibleMonsters.length} de {filteredMonsters.length})
+          </button>
+        </div>
+      )}
 
       {/* Modal: Create Monster Form */}
       {isModalOpen && (
