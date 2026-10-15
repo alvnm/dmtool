@@ -1,9 +1,10 @@
 'use client';
 
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Swords, Backpack, Skull, Users, BookOpen, 
-  Sparkles, ArrowRight, Shield, Heart, Zap, Coins
+  ArrowRight, Heart, Maximize2
 } from 'lucide-react';
 import { QuickNotes } from './QuickNotes';
 import { Combatant, InventoryItem, Monster, NPC, Spell, DMNote } from '@/types';
@@ -32,115 +33,124 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
   const activeEnemies = combatants.filter(c => !c.is_player);
   const activePlayers = combatants.filter(c => c.is_player);
   const totalGp = items.reduce((acc, i) => acc + (Number(i.value_gp) || 0), 0);
+  const wounded = combatants.filter(c => c.hp_current < c.hp_max).length;
+
+  // Tarjetas de acceso directo: cada una lleva a su módulo con un clic.
+  const CARDS = [
+    {
+      id: 'initiative',
+      icon: Swords,
+      title: 'Iniciativa',
+      detail: `${activePlayers.length} Jugadores | ${activeEnemies.length} Enemigos`,
+      count: combatants.length,
+      iconClass: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
+      badgeClass: 'bg-amber-500/20 text-amber-300',
+      cta: 'Abrir combate',
+    },
+    {
+      id: 'inventory',
+      icon: Backpack,
+      title: 'Inventario & Tesoro',
+      detail: `${totalGp.toLocaleString()} PO acumulados`,
+      count: items.length,
+      iconClass: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400',
+      badgeClass: 'bg-yellow-500/20 text-yellow-300',
+      cta: 'Ver inventario',
+    },
+    {
+      id: 'monsters',
+      icon: Skull,
+      title: 'Monstruos & SRD',
+      detail: 'Bestiario completo',
+      count: monsters.length,
+      iconClass: 'bg-red-500/10 border-red-500/30 text-red-400',
+      badgeClass: 'bg-red-500/20 text-red-300',
+      cta: 'Abrir bestiario',
+    },
+    {
+      id: 'npcs',
+      icon: Users,
+      title: 'Gestor de NPCs',
+      detail: 'Fichas y secretos DM',
+      count: npcs.length,
+      iconClass: 'bg-purple-500/10 border-purple-500/30 text-purple-400',
+      badgeClass: 'bg-purple-500/20 text-purple-300',
+      cta: 'Ver NPCs',
+    },
+    {
+      id: 'spells',
+      icon: BookOpen,
+      title: 'Grimorio de Hechizos',
+      detail: 'Biblioteca arcana',
+      count: spells.length,
+      iconClass: 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400',
+      badgeClass: 'bg-indigo-500/20 text-indigo-300',
+      cta: 'Abrir grimorio',
+    },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Quick Tool Navigation Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {/* Initiative Tracker Shortcut */}
-        <div
-          onClick={() => onSelectTab('initiative')}
-          className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer transition shadow-md group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 group-hover:scale-105 transition">
-              <Swords className="w-5 h-5" />
-            </div>
-            <span className="text-xs bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded">
-              {combatants.length}
-            </span>
-          </div>
-          <h3 className="font-bold text-slate-100 text-sm group-hover:text-amber-400 transition">Iniciativa</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {activePlayers.length} Jugadores | {activeEnemies.length} Enemigos
-          </p>
-        </div>
-
-        {/* Inventory Tracker Shortcut */}
-        <div
-          onClick={() => onSelectTab('inventory')}
-          className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer transition shadow-md group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="p-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 group-hover:scale-105 transition">
-              <Backpack className="w-5 h-5" />
-            </div>
-            <span className="text-xs bg-yellow-500/20 text-yellow-300 font-bold px-2 py-0.5 rounded">
-              {items.length}
-            </span>
-          </div>
-          <h3 className="font-bold text-slate-100 text-sm group-hover:text-amber-400 transition">Inventario & Tesoro</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            {totalGp.toLocaleString()} PO acumulados
-          </p>
-        </div>
-
-        {/* Monster Compendium Shortcut */}
-        <div
-          onClick={() => onSelectTab('monsters')}
-          className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer transition shadow-md group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="p-2.5 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 group-hover:scale-105 transition">
-              <Skull className="w-5 h-5" />
-            </div>
-            <span className="text-xs bg-red-500/20 text-red-300 font-bold px-2 py-0.5 rounded">
-              {monsters.length}
-            </span>
-          </div>
-          <h3 className="font-bold text-slate-100 text-sm group-hover:text-amber-400 transition">Monstruos & SRD</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Bestiario completo</p>
-        </div>
-
-        {/* NPC Manager Shortcut */}
-        <div
-          onClick={() => onSelectTab('npcs')}
-          className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer transition shadow-md group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="p-2.5 bg-purple-500/10 border border-purple-500/30 rounded-lg text-purple-400 group-hover:scale-105 transition">
-              <Users className="w-5 h-5" />
-            </div>
-            <span className="text-xs bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded">
-              {npcs.length}
-            </span>
-          </div>
-          <h3 className="font-bold text-slate-100 text-sm group-hover:text-amber-400 transition">Gestor de NPCs</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Fichas y secretos DM</p>
-        </div>
-
-        {/* Spellbook Shortcut */}
-        <div
-          onClick={() => onSelectTab('spells')}
-          className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer transition shadow-md group"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="p-2.5 bg-indigo-500/10 border border-indigo-500/30 rounded-lg text-indigo-400 group-hover:scale-105 transition">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <span className="text-xs bg-indigo-500/20 text-indigo-300 font-bold px-2 py-0.5 rounded">
-              {spells.length}
-            </span>
-          </div>
-          <h3 className="font-bold text-slate-100 text-sm group-hover:text-amber-400 transition">Grimorio de Hechizos</h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Biblioteca arcana</p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {CARDS.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <motion.button
+              key={card.id}
+              type="button"
+              onClick={() => onSelectTab(card.id)}
+              aria-label={`${card.title}: ${card.detail}. Abrir módulo.`}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: index * 0.05, ease: 'easeOut' }}
+              whileHover={{ y: -4, transition: { duration: 0.15 } }}
+              whileTap={{ scale: 0.97 }}
+              className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer transition shadow-md group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-dungeon-950"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div
+                  className={`p-2.5 border rounded-lg transition group-hover:scale-110 ${card.iconClass}`}
+                >
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded transition ${card.badgeClass}`}
+                >
+                  {card.count}
+                </span>
+              </div>
+              <h3 className="font-bold text-slate-100 text-sm group-hover:text-amber-400 transition">
+                {card.title}
+              </h3>
+              <p className="text-[11px] text-slate-400 mt-0.5">{card.detail}</p>
+              <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-500/80 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition">
+                {card.cta} <ArrowRight className="w-3 h-3" />
+              </span>
+            </motion.button>
+          );
+        })}
       </div>
 
       {/* Main Grid: Active Combat Preview + DM Notes */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 cols): Active Combat Overview */}
         <div className="lg:col-span-2 space-y-4 bg-dungeon-900 border border-dungeon-800 rounded-xl p-5 shadow-lg">
-          <div className="flex items-center justify-between border-b border-dungeon-800 pb-3">
+          <div className="flex items-center justify-between border-b border-dungeon-800 pb-3 gap-2 flex-wrap">
             <h3 className="font-bold text-slate-100 flex items-center gap-2">
               <Swords className="w-5 h-5 text-amber-400" />
               Estado del Combate Activo
+              {wounded > 0 && (
+                <span className="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-semibold">
+                  {wounded} heridos
+                </span>
+              )}
             </h3>
             <button
               onClick={() => onSelectTab('initiative')}
               className="text-xs text-amber-400 hover:underline flex items-center gap-1 font-semibold"
             >
-              Abrir Rastreador <ArrowRight className="w-3.5 h-3.5" />
+              <Maximize2 className="w-3.5 h-3.5" /> Abrir Rastreador a pantalla completa
             </button>
           </div>
 
@@ -150,28 +160,69 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
             </div>
           ) : (
             <div className="space-y-2">
-              {combatants.map((c, i) => (
-                <div
-                  key={c.id}
-                  className="bg-dungeon-950 border border-dungeon-800 rounded-lg p-3 flex items-center justify-between text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="bg-dungeon-900 border border-dungeon-800 text-amber-400 font-bold px-2 py-1 rounded">
-                      INIT: {c.initiative}
-                    </span>
-                    <div>
-                      <span className="font-bold text-slate-200">{c.name}</span>
-                      <span className="text-slate-500 ml-2">AC: {c.ac}</span>
-                    </div>
-                  </div>
+              <AnimatePresence initial={false}>
+                {combatants.map(c => {
+                  const hpPercent = Math.max(
+                    0,
+                    Math.min(100, Math.round((c.hp_current / c.hp_max) * 100))
+                  );
+                  return (
+                    <motion.div
+                      key={c.id}
+                      layout
+                      initial={{ opacity: 0, x: -12 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 12 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={() => onSelectTab('initiative')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onSelectTab('initiative');
+                        }
+                      }}
+                      className="bg-dungeon-950 border border-dungeon-800 hover:border-amber-500/40 rounded-lg p-3 flex items-center justify-between text-xs gap-3 cursor-pointer transition"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="bg-dungeon-900 border border-dungeon-800 text-amber-400 font-bold px-2 py-1 rounded shrink-0">
+                          INIT: {c.initiative}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-200 truncate block">{c.name}</span>
+                          <span className="text-slate-500">AC: {c.ac}</span>
+                        </div>
+                      </div>
 
-                  <div className="flex items-center gap-3">
-                    <span className="text-red-400 font-semibold flex items-center gap-1">
-                      <Heart className="w-3.5 h-3.5" /> {c.hp_current}/{c.hp_max}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="w-20 h-1.5 bg-dungeon-900 rounded-full overflow-hidden hidden sm:block">
+                          <motion.div
+                            className={`h-full ${hpPercent > 50 ? 'bg-emerald-500' : hpPercent > 20 ? 'bg-amber-500' : 'bg-red-500'}`}
+                            initial={false}
+                            animate={{ width: `${hpPercent}%` }}
+                            transition={{ duration: 0.35, ease: 'easeOut' }}
+                          />
+                        </div>
+                        <span className="text-red-400 font-semibold flex items-center gap-1">
+                          <Heart className="w-3.5 h-3.5" />
+                          <AnimatePresence mode="popLayout" initial={false}>
+                            <motion.span
+                              key={c.hp_current}
+                              initial={{ y: -8, opacity: 0 }}
+                              animate={{ y: 0, opacity: 1 }}
+                              exit={{ y: 8, opacity: 0 }}
+                              transition={{ duration: 0.18 }}
+                            >
+                              {c.hp_current}/{c.hp_max}
+                            </motion.span>
+                          </AnimatePresence>
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             </div>
           )}
         </div>

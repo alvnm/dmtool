@@ -21,6 +21,8 @@ export const INITIAL_COMBATANTS: Combatant[] = [
     ac: 15,
     is_player: false,
     conditions: ['Envenenado'],
+    condition_rounds: { Envenenado: 3 },
+    dex_mod: 2,
     turn_order: 2,
   },
   {
@@ -43,6 +45,8 @@ export const INITIAL_COMBATANTS: Combatant[] = [
     ac: 13,
     is_player: false,
     conditions: [],
+    condition_rounds: {},
+    dex_mod: 2,
     turn_order: 4,
   },
 ];

@@ -2,16 +2,327 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/**
+ * Paletas por tema.
+ * Cada tono se define como canales "r g b" para que Tailwind pueda aplicar
+ * opacidad (`bg-amber-500/10`). El tema por defecto es el oscuro "Dungeon";
+ * el tema "Pergamino" reescribe todas las variables desde <html data-theme>.
+ */
+:root,
+[data-theme='dungeon'] {
+  color-scheme: dark;
+
+  --dungeon-600: 65 74 99;
+  --dungeon-700: 46 52 71;
+  --dungeon-800: 34 38 52;
+  --dungeon-850: 26 29 38;
+  --dungeon-900: 19 21 27;
+  --dungeon-950: 11 12 16;
+
+  --slate-50: 248 250 252;
+  --slate-100: 241 245 249;
+  --slate-200: 226 232 240;
+  --slate-300: 203 213 225;
+  --slate-400: 148 163 184;
+  --slate-500: 100 116 139;
+  --slate-600: 71 85 105;
+  --slate-700: 51 65 85;
+  --slate-800: 30 41 59;
+  --slate-900: 15 23 42;
+  --slate-950: 2 6 23;
+
+  --amber-50: 255 251 235;
+  --amber-100: 254 243 199;
+  --amber-200: 253 230 138;
+  --amber-300: 252 211 77;
+  --amber-400: 251 191 36;
+  --amber-450: 224 161 46;
+  --amber-500: 245 158 11;
+  --amber-600: 217 119 6;
+  --amber-700: 180 83 9;
+  --amber-800: 146 64 14;
+  --amber-900: 120 53 15;
+  --amber-950: 69 26 3;
+
+  --red-50: 254 242 242;
+  --red-100: 254 226 226;
+  --red-200: 254 202 202;
+  --red-300: 252 165 165;
+  --red-400: 248 113 113;
+  --red-500: 239 68 68;
+  --red-600: 220 38 38;
+  --red-700: 185 28 28;
+  --red-800: 153 27 27;
+  --red-900: 127 29 29;
+  --red-950: 69 10 10;
+
+  --yellow-50: 254 252 232;
+  --yellow-100: 254 249 195;
+  --yellow-200: 254 240 138;
+  --yellow-300: 253 224 71;
+  --yellow-400: 250 204 21;
+  --yellow-500: 234 179 8;
+  --yellow-600: 202 138 4;
+  --yellow-700: 161 98 7;
+  --yellow-800: 133 77 14;
+  --yellow-900: 113 63 18;
+  --yellow-950: 66 32 6;
+
+  --emerald-50: 236 253 245;
+  --emerald-100: 209 250 229;
+  --emerald-200: 167 243 208;
+  --emerald-300: 110 231 183;
+  --emerald-400: 52 211 153;
+  --emerald-500: 16 185 129;
+  --emerald-600: 5 150 105;
+  --emerald-700: 4 120 87;
+  --emerald-800: 6 95 70;
+  --emerald-900: 6 78 59;
+  --emerald-950: 2 44 34;
+
+  --purple-50: 250 245 255;
+  --purple-100: 243 232 255;
+  --purple-200: 233 213 255;
+  --purple-300: 216 180 254;
+  --purple-400: 192 132 252;
+  --purple-500: 168 85 247;
+  --purple-600: 147 51 234;
+  --purple-700: 126 34 206;
+  --purple-800: 107 33 168;
+  --purple-900: 88 28 135;
+  --purple-950: 59 7 100;
+
+  --blue-50: 239 246 255;
+  --blue-100: 219 234 254;
+  --blue-200: 191 219 254;
+  --blue-300: 147 197 253;
+  --blue-400: 96 165 250;
+  --blue-500: 59 130 246;
+  --blue-600: 37 99 235;
+  --blue-700: 29 78 216;
+  --blue-800: 30 64 175;
+  --blue-900: 30 58 138;
+  --blue-950: 23 37 84;
+
+  --indigo-50: 238 242 255;
+  --indigo-100: 224 231 255;
+  --indigo-200: 199 210 254;
+  --indigo-300: 165 180 252;
+  --indigo-400: 129 140 248;
+  --indigo-500: 99 102 241;
+  --indigo-600: 79 70 229;
+  --indigo-700: 67 56 202;
+  --indigo-800: 55 48 163;
+  --indigo-900: 49 46 129;
+  --indigo-950: 30 27 75;
+
+  --rose-50: 255 241 242;
+  --rose-100: 255 228 230;
+  --rose-200: 254 205 211;
+  --rose-300: 253 164 175;
+  --rose-400: 251 113 133;
+  --rose-500: 244 63 94;
+  --rose-600: 225 29 72;
+  --rose-700: 190 18 60;
+  --rose-800: 159 18 57;
+  --rose-900: 136 19 55;
+  --rose-950: 76 5 25;
+
+  --pink-50: 253 242 248;
+  --pink-100: 252 231 243;
+  --pink-200: 251 207 232;
+  --pink-300: 249 168 212;
+  --pink-400: 244 114 182;
+  --pink-500: 236 72 153;
+  --pink-600: 219 39 119;
+  --pink-700: 190 24 93;
+  --pink-800: 157 23 77;
+  --pink-900: 131 24 67;
+  --pink-950: 80 7 36;
+
   --background: #0b0c10;
   --foreground: #f1f5f9;
+  --scrollbar-thumb: #2e3447;
+  --scrollbar-track: #13151b;
+}
+
+/* Tema "Pergamino": papel envejecido, tinta marrón y oro apagado. */
+[data-theme='parchment'] {
+  color-scheme: light;
+
+  /* Superficies: 950 = página/huecos, 900 = tarjeta, 800/700 = bordes */
+  --dungeon-600: 138 120 88;
+  --dungeon-700: 191 170 131;
+  --dungeon-800: 214 196 162;
+  --dungeon-850: 251 245 230;
+  --dungeon-900: 247 239 221;
+  --dungeon-950: 236 224 198;
+
+  /* Tinta: 100/200 = texto principal, 400/500 = texto secundario */
+  --slate-50: 32 24 12;
+  --slate-100: 42 30 15;
+  --slate-200: 58 43 22;
+  --slate-300: 74 56 32;
+  --slate-400: 109 90 61;
+  --slate-500: 125 106 74;
+  --slate-600: 139 120 84;
+  --slate-700: 160 142 104;
+  --slate-800: 182 166 131;
+  --slate-900: 201 187 154;
+  --slate-950: 24 17 7;
+
+  /* Oro: 300/400 = texto e iconos sobre papel, 500 = relleno sólido */
+  --amber-50: 252 246 228;
+  --amber-100: 249 238 209;
+  --amber-200: 243 224 180;
+  --amber-300: 154 106 16;
+  --amber-400: 150 101 15;
+  --amber-450: 160 107 16;
+  --amber-500: 190 128 26;
+  --amber-600: 176 118 19;
+  --amber-700: 143 95 12;
+  --amber-800: 168 122 44;
+  --amber-900: 140 98 26;
+  --amber-950: 243 232 204;
+
+  /* Rojo: tintas oscuras para texto, tinte claro para chips */
+  --red-50: 254 243 242;
+  --red-100: 254 228 226;
+  --red-200: 244 196 192;
+  --red-300: 163 36 29;
+  --red-400: 179 38 30;
+  --red-500: 167 42 32;
+  --red-600: 143 29 21;
+  --red-700: 150 40 34;
+  --red-800: 176 96 90;
+  --red-900: 190 120 114;
+  --red-950: 247 222 219;
+
+  --yellow-50: 253 249 231;
+  --yellow-100: 250 241 199;
+  --yellow-200: 242 224 158;
+  --yellow-300: 138 93 10;
+  --yellow-400: 161 98 7;
+  --yellow-500: 180 130 20;
+  --yellow-600: 150 100 10;
+  --yellow-700: 120 80 10;
+  --yellow-800: 190 150 60;
+  --yellow-900: 205 170 90;
+  --yellow-950: 245 232 190;
+
+  --emerald-50: 233 244 238;
+  --emerald-100: 219 239 230;
+  --emerald-200: 193 226 213;
+  --emerald-300: 8 90 66;
+  --emerald-400: 10 102 74;
+  --emerald-500: 16 130 92;
+  --emerald-600: 13 110 78;
+  --emerald-700: 11 92 65;
+  --emerald-800: 78 146 122;
+  --emerald-900: 46 134 104;
+  --emerald-950: 224 241 233;
+
+  --purple-50: 243 237 251;
+  --purple-100: 235 226 249;
+  --purple-200: 96 40 150;
+  --purple-300: 107 33 168;
+  --purple-400: 124 45 190;
+  --purple-500: 140 60 205;
+  --purple-600: 126 34 206;
+  --purple-700: 126 50 180;
+  --purple-800: 158 130 205;
+  --purple-900: 216 203 244;
+  --purple-950: 238 232 251;
+
+  --blue-50: 234 240 250;
+  --blue-100: 222 232 249;
+  --blue-200: 24 74 150;
+  --blue-300: 21 74 150;
+  --blue-400: 29 86 166;
+  --blue-500: 37 100 190;
+  --blue-600: 30 86 170;
+  --blue-700: 27 74 150;
+  --blue-800: 120 160 210;
+  --blue-900: 90 138 200;
+  --blue-950: 224 236 250;
+
+  --indigo-50: 237 238 251;
+  --indigo-100: 230 231 250;
+  --indigo-200: 67 56 202;
+  --indigo-300: 67 56 202;
+  --indigo-400: 79 70 229;
+  --indigo-500: 88 80 220;
+  --indigo-600: 79 70 229;
+  --indigo-700: 67 56 202;
+  --indigo-800: 130 140 215;
+  --indigo-900: 100 110 220;
+  --indigo-950: 230 232 250;
+
+  --rose-50: 253 236 240;
+  --rose-100: 251 228 233;
+  --rose-200: 246 208 216;
+  --rose-300: 170 30 70;
+  --rose-400: 159 18 57;
+  --rose-500: 190 24 70;
+  --rose-600: 159 18 57;
+  --rose-700: 140 20 55;
+  --rose-800: 190 120 140;
+  --rose-900: 206 150 165;
+  --rose-950: 250 226 232;
+
+  --pink-50: 253 237 246;
+  --pink-100: 252 228 241;
+  --pink-200: 245 205 228;
+  --pink-300: 157 23 77;
+  --pink-400: 173 31 92;
+  --pink-500: 190 45 110;
+  --pink-600: 157 23 77;
+  --pink-700: 140 25 70;
+  --pink-800: 200 130 165;
+  --pink-900: 216 155 185;
+  --pink-950: 250 228 241;
+
+  --background: #ece0c6;
+  --foreground: #2a1e0f;
+  --scrollbar-thumb: #bfaa83;
+  --scrollbar-track: #e3d5b6;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, sans-serif;
   min-height: 100vh;
+}
+
+/* Textura sutil de papel envejecido sólo en el tema Pergamino. */
+[data-theme='parchment'] body {
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  background-color: var(--background);
+  background-image:
+    radial-gradient(ellipse at 15% 10%, rgba(255, 250, 235, 0.75), transparent 55%),
+    radial-gradient(ellipse at 85% 90%, rgba(160, 128, 74, 0.18), transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(120, 95, 55, 0.035) 0px,
+      rgba(120, 95, 55, 0.035) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  background-attachment: fixed;
+}
+
+[data-theme='parchment'] input,
+[data-theme='parchment'] textarea,
+[data-theme='parchment'] select,
+[data-theme='parchment'] button {
+  font-family: inherit;
+}
+
+::selection {
+  background: #f59e0b;
+  color: #020617;
 }
 
 /* Custom Scrollbar for Dungeon DM Theme */
@@ -21,14 +332,23 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #13151b;
+  background: rgb(var(--scrollbar-track));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2e3447;
+  background: rgb(var(--scrollbar-thumb));
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #e0a12e;
+  background: rgb(var(--amber-400));
+}
+
+/* Transición suave al cambiar de tema (respeta la preferencia de movimiento). */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  header,
+  footer {
+    transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+  }
 }

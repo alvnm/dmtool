@@ -13,7 +13,15 @@ import { consume, loginPolicy } from '@/lib/security/rateLimit';
 const isProd = process.env.NODE_ENV === 'production';
 
 // Rutas accesibles sin sesión.
-const PUBLIC_PATHS = ['/', '/login', '/favicon.ico'];
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/favicon.ico',
+  '/manifest.webmanifest',
+  '/sw.js',
+  '/robots.txt',
+  '/sitemap.xml',
+];
 const PUBLIC_API = ['/api/auth/login', '/api/health'];
 // Única ruta que admite subida de archivos (con lista blanca en /api/uploads).
 const UPLOAD_ROUTES = ['/api/uploads'];
@@ -31,6 +39,10 @@ function isPublic(pathname: string): boolean {
     PUBLIC_PATHS.includes(pathname) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api/auth/') ||
+    // Imágenes de vista previa (Open Graph / Twitter) y PWA: sin sesión,
+    // las piden Discord, WhatsApp o el instalador de la app.
+    pathname.startsWith('/opengraph-image') ||
+    pathname.startsWith('/twitter-image') ||
     PUBLIC_API.includes(pathname)
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { DMNote } from '@/types';
 import { FileText, Plus, Pin, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
 
@@ -87,9 +88,15 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
       </div>
 
       <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+        <AnimatePresence initial={false}>
         {filteredNotes.map(n => (
-          <div
+          <motion.div
             key={n.id}
+            layout
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: 16, transition: { duration: 0.15 } }}
+            transition={{ duration: 0.2 }}
             className={`p-3 rounded-lg border transition ${
               n.pinned
                 ? 'bg-amber-950/20 border-amber-500/50'
@@ -126,8 +133,9 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
             <span className="inline-block text-[9px] bg-dungeon-900 text-slate-400 px-2 py-0.5 rounded mt-2 border border-dungeon-800">
               {n.category}
             </span>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
 
       {/* Modal Add Note */}

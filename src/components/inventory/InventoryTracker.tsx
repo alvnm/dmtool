@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { InventoryItem } from '@/types';
 import { 
   Backpack, Plus, Search, Filter, Coins, Scale, Trash2, 
@@ -139,7 +140,20 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Valor Total en Oro</p>
-            <h3 className="text-2xl font-bold text-yellow-400">{totalValueGp.toLocaleString()} PO</h3>
+            <h3 className="text-2xl font-bold text-yellow-400 flex items-baseline gap-1 overflow-hidden">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.span
+                  key={totalValueGp}
+                  initial={{ y: -14, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 14, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {totalValueGp.toLocaleString()}
+                </motion.span>
+              </AnimatePresence>
+              <span className="text-base font-semibold">PO</span>
+            </h3>
           </div>
         </div>
 
@@ -205,9 +219,15 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
 
       {/* Item List Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <AnimatePresence initial={false}>
         {filteredItems.map(item => (
-          <div
+          <motion.div
             key={item.id}
+            layout
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
             className="bg-dungeon-900 border border-dungeon-800 hover:border-dungeon-700 rounded-xl p-4 flex flex-col justify-between space-y-3 shadow-md transition"
           >
             <div>
@@ -258,8 +278,9 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
 
       {/* Modal Add / Edit */}

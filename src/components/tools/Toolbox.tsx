@@ -1,0 +1,322 @@
+'use client';
+
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Dices, UserRound, X, Copy, Trash2, Wand2, Check } from 'lucide-react';
+import { roll } from '@/lib/dice';
+import { NAME_POOLS, randomName, type NameCategory } from '@/lib/names';
+import { usePersistentState } from '@/lib/usePersistentState';
+
+type TabId = 'dados' | 'nombres';
+
+interface HistoryEntry {
+  id: number;
+  notation: string;
+  total: number;
+  detail: string;
+}
+
+const QUICK_ROLLS = ['1d20', '1d20+5', '1d20-2', '2d6+3', '4d6', '1d8', '1d100'];
+const DIE_BUTTONS = [4, 6, 8, 10, 12, 20];
+const MAX_HISTORY = 25;
+
+/**
+ * Toolbox flotante del DM: lanzador de dados con historial + generador de
+ * nombres aleatorios. El historial se guarda en localStorage.
+ */
+export const Toolbox: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<TabId>('dados');
+
+  // Dados
+  const [notation, setNotation] = useState('1d20+5');
+  const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = usePersistentState<HistoryEntry[]>('dice-history', []);
+  const [lastTotal, setLastTotal] = useState<number | null>(null);
+
+  // Nombres
+  const [category, setCategory] = usePersistentState<NameCategory>('name-category', 'Humano');
+  const [generated, setGenerated] = useState<{ id: number; value: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    if (open && tab === 'dados') inputRef.current?.focus();
+  }, [open, tab]);
+
+  useEffect(() => {
+    const timer = copyTimer.current;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  const doRoll = (value: string) => {
+    try {
+      const result = roll(value);
+      setError(null);
+      setLastTotal(result.total);
+      setHistory(prev =>
+        [
+          {
+            id: Date.now() + Math.random(),
+            notation: result.notation,
+            total: result.total,
+            detail: result.rolls.join(' + ') + (result.modifier ? ` ${result.modifier > 0 ? '+' : ''}${result.modifier}` : ''),
+          },
+          ...prev,
+        ].slice(0, MAX_HISTORY)
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Tirada no válida');
+    }
+  };
+
+  const generateName = () => {
+    const value = randomName(category);
+    setGenerated({ id: Date.now(), value });
+    setCopied(false);
+  };
+
+  const copyName = async () => {
+    if (!generated) return;
+    try {
+      await navigator.clipboard.writeText(generated.value);
+      setCopied(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard bloqueado: el nombre queda visible para copiarlo a mano.
+    }
+  };
+
+  const activePool = NAME_POOLS.find(p => p.category === category) ?? NAME_POOLS[0];
+
+  return (
+    <>
+      {/* Botón flotante */}
+      <motion.button
+        type="button"
+        onClick={() => setOpen(prev => !prev)}
+        aria-expanded={open}
+        aria-label={open ? 'Cerrar herramientas del DM' : 'Abrir herramientas del DM (dados y nombres)'}
+        whileHover={{ scale: 1.06 }}
+        whileTap={{ scale: 0.94 }}
+        className="fixed z-50 bottom-4 right-4 mb-[env(safe-area-inset-bottom)] w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 shadow-xl shadow-amber-600/30 flex items-center justify-center border border-amber-400/60"
+        title="Herramientas del DM: dados y nombres"
+      >
+        {open ? <X className="w-6 h-6" /> : <Dices className="w-7 h-7" />}
+      </motion.button>
+
+      {/* Panel */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.97 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            role="dialog"
+            aria-label="Herramientas del DM"
+            className="fixed z-50 bottom-20 right-4 mb-[env(safe-area-inset-bottom)] w-[min(22rem,calc(100vw-2rem))] max-h-[75vh] flex flex-col bg-dungeon-900 border border-dungeon-700 rounded-xl shadow-2xl overflow-hidden"
+          >
+            {/* Pestañas */}
+            <div className="flex border-b border-dungeon-800">
+              <button
+                onClick={() => setTab('dados')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold transition ${
+                  tab === 'dados' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Dices className="w-4 h-4" /> Dados
+              </button>
+              <button
+                onClick={() => setTab('nombres')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold transition ${
+                  tab === 'nombres' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <UserRound className="w-4 h-4" /> Nombres
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto">
+              {tab === 'dados' ? (
+                <div className="space-y-3">
+                  <form
+                    onSubmit={e => {
+                      e.preventDefault();
+                      doRoll(notation);
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={notation}
+                      onChange={e => setNotation(e.target.value)}
+                      placeholder="2d6+3"
+                      aria-label="Notación de tirada"
+                      className="flex-1 min-w-0 bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none font-mono"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-3 py-2 rounded-lg transition"
+                    >
+                      Tirar
+                    </button>
+                  </form>
+
+                  {error && <p className="text-xs text-red-400">{error}</p>}
+
+                  {/* Botones rápidos de dados */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {DIE_BUTTONS.map(sides => (
+                      <button
+                        key={sides}
+                        onClick={() => doRoll(`1d${sides}`)}
+                        className="text-[11px] font-bold bg-dungeon-950 hover:bg-dungeon-800 border border-dungeon-700 text-amber-400 px-2.5 py-1.5 rounded transition"
+                      >
+                        1d{sides}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {QUICK_ROLLS.map(n => (
+                      <button
+                        key={n}
+                        onClick={() => doRoll(n)}
+                        className="text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 px-2.5 py-1.5 rounded transition"
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Resultado destacado */}
+                  <AnimatePresence mode="popLayout">
+                    {lastTotal !== null && (
+                      <motion.div
+                        key={lastTotal + '-' + (history[0]?.id ?? 0)}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="bg-dungeon-950 border border-amber-500/40 rounded-lg p-3 text-center"
+                      >
+                        <p className="text-[10px] uppercase tracking-widest text-slate-500">
+                          {history[0]?.notation ?? ''}
+                        </p>
+                        <p className="text-3xl font-black text-amber-400">{lastTotal}</p>
+                        <p className="text-[11px] text-slate-400 font-mono">{history[0]?.detail}</p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Historial */}
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                      Historial ({history.length})
+                    </h4>
+                    {history.length > 0 && (
+                      <button
+                        onClick={() => setHistory([])}
+                        className="text-[11px] text-slate-500 hover:text-red-400 flex items-center gap-1 transition"
+                      >
+                        <Trash2 className="w-3 h-3" /> Limpiar
+                      </button>
+                    )}
+                  </div>
+                  <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                    <AnimatePresence initial={false}>
+                      {history.map(h => (
+                        <motion.li
+                          key={h.id}
+                          layout
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="flex items-center justify-between gap-2 bg-dungeon-950 border border-dungeon-800 rounded px-2 py-1.5 text-xs"
+                        >
+                          <span className="font-mono text-slate-400">{h.notation}</span>
+                          <span className="text-[10px] text-slate-500 font-mono truncate">{h.detail}</span>
+                          <span className="font-bold text-amber-400">{h.total}</span>
+                        </motion.li>
+                      ))}
+                    </AnimatePresence>
+                  </ul>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {NAME_POOLS.map(pool => (
+                      <button
+                        key={pool.category}
+                        onClick={() => setCategory(pool.category)}
+                        className={`text-[11px] px-2.5 py-1.5 rounded-full border transition ${
+                          category === pool.category
+                            ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+                            : 'bg-dungeon-950 text-slate-400 border-dungeon-700 hover:text-slate-200'
+                        }`}
+                      >
+                        {pool.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-[11px] text-slate-500">{activePool.hint}</p>
+
+                  <button
+                    onClick={generateName}
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-lg transition"
+                  >
+                    <Wand2 className="w-4 h-4" /> Generar nombre
+                  </button>
+
+                  <div className="bg-dungeon-950 border border-dungeon-700 rounded-lg p-4 text-center min-h-[68px] flex flex-col items-center justify-center">
+                    <AnimatePresence mode="wait">
+                      {generated ? (
+                        <motion.p
+                          key={generated.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.18 }}
+                          className="font-serif text-xl font-bold text-amber-400"
+                        >
+                          {generated.value}
+                        </motion.p>
+                      ) : (
+                        <p className="text-xs text-slate-500">
+                          Pulsa el botón cuando los jugadores hablen con un NPC improvisado.
+                        </p>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <button
+                    onClick={copyName}
+                    disabled={!generated}
+                    className="w-full flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? 'Copiado' : 'Copiar nombre'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};

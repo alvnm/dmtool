@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Combatant, Monster, NPC } from '@/types';
 import { 
   Swords, Plus, Trash2, Shield, Heart, ArrowRight, 
-  RotateCcw, Sparkles, UserCheck, Skull, ChevronUp, ChevronDown
+  RotateCcw, Sparkles, UserCheck, Skull, Dices, Timer, Maximize2, Minimize2
 } from 'lucide-react';
+import { usePersistentState } from '@/lib/usePersistentState';
 
 interface InitiativeTrackerProps {
   combatants: Combatant[];
@@ -14,41 +16,142 @@ interface InitiativeTrackerProps {
   onUpdateCombatants: (combatants: Combatant[]) => void;
 }
 
+const AVAILABLE_CONDITIONS = [
+  'Cegado', 'Encantado', 'Ensordecido', 'Asustado', 
+  'Agarrado', 'Incapacitado', 'Invisible', 'Paralizado', 
+  'Petrificado', 'Envenenado', 'Derribado', 'Apresado', 
+  'Aturdido', 'Inconsciente', 'Concentración'
+];
+
+// Duraciones por defecto (en rondas) que el DM puede ciclar con un clic.
+const DURATION_CYCLE: Array<number | null> = [3, 1, 2, 4, 5, 10, null];
+const DEFAULT_ROUNDS = 3;
+
+const d20 = () => Math.floor(Math.random() * 20) + 1;
+
 export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   combatants,
   monsters,
   npcs,
   onUpdateCombatants,
 }) => {
-  const [currentTurnIndex, setCurrentTurnIndex] = useState<number>(0);
-  const [round, setRound] = useState<number>(1);
+  // La sesión de combate también se guarda: un refresco no pierde la ronda.
+  const [currentTurnIndex, setCurrentTurnIndex] = usePersistentState<number>('turn-index', 0);
+  const [round, setRound] = usePersistentState<number>('round', 1);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
-  
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
   // Custom new combatant form state
   const [newName, setNewName] = useState('');
   const [newInitiative, setNewInitiative] = useState(10);
   const [newHp, setNewHp] = useState(10);
   const [newAc, setNewAc] = useState(10);
+  const [newDexMod, setNewDexMod] = useState(0);
   const [isPlayer, setIsPlayer] = useState(false);
 
-  // Condition toggle options
-  const AVAILABLE_CONDITIONS = [
-    'Cegado', 'Encantado', 'Ensordecido', 'Asustado', 
-    'Agarrado', 'Incapacitado', 'Invisible', 'Paralizado', 
-    'Petrificado', 'Envenenado', 'Derribado', 'Apresado', 
-    'Aturdido', 'Inconsciente'
-  ];
+  // Aviso efímero (condiciones caducadas)
+  const [notice, setNotice] = useState<{ id: number; text: string } | null>(null);
+  // Indicadores flotantes de +/- HP
+  const [floaters, setFloaters] = useState<Record<string, { amount: number; key: number }>>({});
+  const floaterTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const sortCombatants = (list: Combatant[]) => {
     return [...list].sort((a, b) => b.initiative - a.initiative);
   };
 
+  // El turno nunca puede quedar fuera de rango tras borrar combatientes.
+  useEffect(() => {
+    if (combatants.length === 0) {
+      if (currentTurnIndex !== 0) setCurrentTurnIndex(0);
+      return;
+    }
+    if (currentTurnIndex > combatants.length - 1) {
+      setCurrentTurnIndex(combatants.length - 1);
+    }
+  }, [combatants.length, currentTurnIndex, setCurrentTurnIndex]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 3500);
+    return () => clearTimeout(t);
+  }, [notice]);
+
+  useEffect(() => {
+    const timers = floaterTimers.current;
+    return () => Object.values(timers).forEach(clearTimeout);
+  }, []);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      // El navegador puede rechazarlo (p. ej. sin gesto del usuario).
+    }
+  };
+
+  /**
+   * Lanza 1d20 + mod. DEST para monstruos y NPCs (los PJs conservan la
+   * iniciativa que haya reportado el jugador) y reordena la ronda.
+   */
+  const handleRollInitiative = () => {
+    const rolled = combatants.map(c => {
+      if (c.is_player) return c;
+      return { ...c, initiative: d20() + (c.dex_mod ?? 0) };
+    });
+    onUpdateCombatants(sortCombatants(rolled));
+    setCurrentTurnIndex(0);
+    setNotice({
+      id: Date.now(),
+      text: '🎲 Iniciativa lanzada para monstruos y NPCs (1d20 + mod. DEST).',
+    });
+  };
+
+  /** Avanza el turno; al cerrar la ronda descuenta los temporizadores. */
   const handleNextTurn = () => {
     if (combatants.length === 0) return;
+
     if (currentTurnIndex >= combatants.length - 1) {
       setCurrentTurnIndex(0);
       setRound(prev => prev + 1);
+
+      // Temporizadores de condiciones: -1 ronda al empezar la ronda siguiente.
+      const expired: string[] = [];
+      let touched = false;
+      const updated = combatants.map(c => {
+        const rounds = c.condition_rounds;
+        if (!rounds) return c;
+        touched = true;
+        const nextRounds: Record<string, number | null> = {};
+        const kept: string[] = [];
+        for (const cond of c.conditions) {
+          const left = rounds[cond];
+          if (left === undefined || left === null) {
+            nextRounds[cond] = left ?? null;
+            kept.push(cond);
+            continue;
+          }
+          if (left <= 1) {
+            expired.push(`${c.name}: ${cond}`);
+            continue;
+          }
+          nextRounds[cond] = left - 1;
+          kept.push(cond);
+        }
+        return { ...c, conditions: kept, condition_rounds: nextRounds };
+      });
+
+      if (touched) onUpdateCombatants(updated);
+      if (expired.length) {
+        setNotice({ id: Date.now(), text: `⏳ Caducó → ${expired.join(' • ')}` });
+      }
     } else {
       setCurrentTurnIndex(prev => prev + 1);
     }
@@ -72,6 +175,8 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
       ac: Number(newAc),
       is_player: isPlayer,
       conditions: [],
+      condition_rounds: {},
+      ...(isPlayer ? {} : { dex_mod: Number(newDexMod) || 0 }),
     };
 
     const updated = sortCombatants([...combatants, newCombatant]);
@@ -81,16 +186,18 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   };
 
   const handleImportMonster = (monster: Monster) => {
-    const initRoll = Math.floor(Math.random() * 20) + 1 + Math.floor((monster.stats.dex - 10) / 2);
+    const dexMod = Math.floor((monster.stats.dex - 10) / 2);
     const imported: Combatant = {
       id: `comb-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
       name: monster.name,
-      initiative: initRoll,
+      initiative: d20() + dexMod,
       hp_current: monster.hp_max,
       hp_max: monster.hp_max,
       ac: monster.ac,
       is_player: false,
       conditions: [],
+      condition_rounds: {},
+      dex_mod: dexMod,
     };
 
     const updated = sortCombatants([...combatants, imported]);
@@ -101,12 +208,14 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
     const imported: Combatant = {
       id: `comb-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
       name: npc.name,
-      initiative: Math.floor(Math.random() * 20) + 1,
+      initiative: d20(),
       hp_current: 12,
       hp_max: 12,
       ac: 12,
       is_player: false,
       conditions: [],
+      condition_rounds: {},
+      dex_mod: 0,
     };
 
     const updated = sortCombatants([...combatants, imported]);
@@ -114,26 +223,54 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   };
 
   const handleHpChange = (id: string, delta: number) => {
-    const updated = combatants.map(c => {
-      if (c.id === id) {
-        const nextHp = Math.max(0, Math.min(c.hp_max, c.hp_current + delta));
-        return { ...c, hp_current: nextHp };
-      }
-      return c;
-    });
-    onUpdateCombatants(updated);
+    const target = combatants.find(c => c.id === id);
+    if (!target) return;
+
+    const nextHp = Math.max(0, Math.min(target.hp_max, target.hp_current + delta));
+    const applied = nextHp - target.hp_current;
+    if (applied === 0) return;
+
+    onUpdateCombatants(
+      combatants.map(c => (c.id === id ? { ...c, hp_current: nextHp } : c))
+    );
+
+    // Floater "+5" / "-5" para feedback inmediato del cambio de vida.
+    const key = Date.now();
+    setFloaters(prev => ({ ...prev, [id]: { amount: applied, key } }));
+    clearTimeout(floaterTimers.current[id]);
+    floaterTimers.current[id] = setTimeout(() => {
+      setFloaters(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }, 900);
   };
 
   const handleToggleCondition = (combatantId: string, condition: string) => {
     const updated = combatants.map(c => {
-      if (c.id === combatantId) {
-        const hasCond = c.conditions.includes(condition);
-        const newConds = hasCond
-          ? c.conditions.filter(item => item !== condition)
-          : [...c.conditions, condition];
-        return { ...c, conditions: newConds };
+      if (c.id !== combatantId) return c;
+      const hasCond = c.conditions.includes(condition);
+      const rounds = { ...(c.condition_rounds ?? {}) };
+      if (hasCond) {
+        delete rounds[condition];
+        return { ...c, conditions: c.conditions.filter(item => item !== condition), condition_rounds: rounds };
       }
-      return c;
+      rounds[condition] = DEFAULT_ROUNDS;
+      return { ...c, conditions: [...c.conditions, condition], condition_rounds: rounds };
+    });
+    onUpdateCombatants(updated);
+  };
+
+  /** Cicla la duración restante: 3 → 1 → 2 → 4 → 5 → 10 → hasta salvar. */
+  const handleCycleDuration = (combatantId: string, condition: string) => {
+    const updated = combatants.map(c => {
+      if (c.id !== combatantId) return c;
+      const rounds = { ...(c.condition_rounds ?? {}) };
+      const current = rounds[condition] ?? null;
+      const idx = DURATION_CYCLE.indexOf(current);
+      rounds[condition] = DURATION_CYCLE[(idx + 1) % DURATION_CYCLE.length];
+      return { ...c, condition_rounds: rounds };
     });
     onUpdateCombatants(updated);
   };
@@ -151,8 +288,11 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
     setNewInitiative(10);
     setNewHp(10);
     setNewAc(10);
+    setNewDexMod(0);
     setIsPlayer(false);
   };
+
+  const currentTurnName = combatants[currentTurnIndex]?.name || 'Ninguno';
 
   return (
     <div className="space-y-6">
@@ -163,19 +303,30 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             <Swords className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 flex-wrap">
               Rastreador de Iniciativa
               <span className="text-xs bg-amber-500/20 text-amber-300 font-semibold px-2 py-0.5 rounded border border-amber-500/30">
                 Ronda {round}
               </span>
             </h2>
             <p className="text-xs text-slate-400">
-              {combatants.length} Combatientes registrados | Turno actual: {combatants[currentTurnIndex]?.name || 'Ninguno'}
+              {combatants.length} Combatientes registrados | Turno actual:{' '}
+              <span className="text-amber-400 font-semibold">{currentTurnName}</span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleRollInitiative}
+            disabled={combatants.length === 0}
+            className="flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-amber-400 px-3 py-2 rounded-lg text-sm border border-dungeon-700 transition disabled:opacity-50"
+            title="Tira 1d20 + mod. DEST para monstruos y NPCs y reordena la ronda"
+          >
+            <Dices className="w-4 h-4" />
+            Lanzar Iniciativa
+          </button>
+
           <button
             onClick={handleNextTurn}
             disabled={combatants.length === 0}
@@ -199,7 +350,8 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             className="flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-amber-400 px-3 py-2 rounded-lg text-sm border border-dungeon-700 transition"
           >
             <Sparkles className="w-4 h-4" />
-            Importar Monstruo / NPC
+            <span className="hidden sm:inline">Importar Monstruo / NPC</span>
+            <span className="sm:hidden">Importar</span>
           </button>
 
           <button
@@ -207,10 +359,39 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 px-3 py-2 rounded-lg text-sm border border-amber-500/30 transition"
           >
             <Plus className="w-4 h-4" />
-            Nuevo Combatiente
+            <span className="hidden sm:inline">Nuevo Combatiente</span>
+            <span className="sm:hidden">Nuevo</span>
+          </button>
+
+          <button
+            onClick={toggleFullscreen}
+            className="flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 rounded-lg text-sm border border-dungeon-700 transition"
+            title="Ver el combate a pantalla completa (ideal para tablets del DM)"
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            <span className="hidden lg:inline">
+              {isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+            </span>
           </button>
         </div>
       </div>
+
+      {/* Aviso de temporizadores / tiradas */}
+      <AnimatePresence>
+        {notice && (
+          <motion.div
+            key={notice.id}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-semibold px-4 py-2.5 rounded-lg flex items-center gap-2"
+            role="status"
+          >
+            <Timer className="w-4 h-4 shrink-0" />
+            {notice.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Combatants List */}
       {combatants.length === 0 ? (
@@ -231,155 +412,241 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
         </div>
       ) : (
         <div className="space-y-3">
-          {combatants.map((c, index) => {
-            const isActive = index === currentTurnIndex;
-            const hpPercent = Math.max(0, Math.min(100, Math.round((c.hp_current / c.hp_max) * 100)));
+          <AnimatePresence initial={false}>
+            {combatants.map((c, index) => {
+              const isActive = index === currentTurnIndex;
+              const hpPercent = Math.max(0, Math.min(100, Math.round((c.hp_current / c.hp_max) * 100)));
+              const floater = floaters[c.id];
 
-            return (
-              <div
-                key={c.id}
-                className={`relative rounded-xl border transition-all duration-200 overflow-hidden ${
-                  isActive
-                    ? 'bg-dungeon-850 border-amber-500/80 ring-1 ring-amber-500/50 shadow-xl'
-                    : 'bg-dungeon-900 border-dungeon-800 hover:border-dungeon-700'
-                }`}
-              >
-                {/* Turn indicator bar */}
-                {isActive && (
-                  <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b from-amber-400 to-amber-600" />
-                )}
+              return (
+                <motion.div
+                  key={c.id}
+                  layout
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -24, transition: { duration: 0.15 } }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  className={`relative rounded-xl border transition-all duration-200 overflow-hidden ${
+                    isActive
+                      ? 'bg-dungeon-850 border-amber-500/80 ring-1 ring-amber-500/50 shadow-xl'
+                      : 'bg-dungeon-900 border-dungeon-800 hover:border-dungeon-700'
+                  }`}
+                >
+                  {/* Turn indicator bar: se desliza de una fila a otra */}
+                  {isActive && (
+                    <motion.span
+                      layoutId="turn-indicator"
+                      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                      className="absolute top-0 left-0 bottom-0 w-1.5 bg-gradient-to-b from-amber-400 to-amber-600"
+                    />
+                  )}
 
-                <div className="p-4 flex flex-wrap items-center justify-between gap-4">
-                  {/* Left info */}
-                  <div className="flex items-center gap-4 min-w-[220px]">
-                    <div className="flex flex-col items-center justify-center bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 min-w-[50px]">
-                      <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">INIT</span>
-                      <span className="text-xl font-bold text-amber-400">{c.initiative}</span>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-slate-100 text-lg">{c.name}</h3>
-                        {c.is_player ? (
-                          <span className="text-[10px] bg-blue-500/20 text-blue-300 font-semibold px-2 py-0.5 rounded border border-blue-500/30 flex items-center gap-1">
-                            <UserCheck className="w-3 h-3" /> Jugador
-                          </span>
-                        ) : (
-                          <span className="text-[10px] bg-red-500/20 text-red-300 font-semibold px-2 py-0.5 rounded border border-red-500/30 flex items-center gap-1">
-                            <Skull className="w-3 h-3" /> Enemigo
-                          </span>
+                  <div className="p-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                    {/* Left info */}
+                    <div className="flex items-center gap-4 min-w-[170px] flex-1 sm:flex-none">
+                      <div className="flex flex-col items-center justify-center bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 min-w-[50px]">
+                        <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">INIT</span>
+                        <motion.span
+                          key={c.initiative}
+                          initial={{ scale: 1.3, opacity: 0.4 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.25 }}
+                          className="text-xl font-bold text-amber-400"
+                        >
+                          {c.initiative}
+                        </motion.span>
+                        {c.dex_mod !== undefined && !c.is_player && (
+                          <span className="text-[9px] text-slate-500">1d20{c.dex_mod >= 0 ? `+${c.dex_mod}` : c.dex_mod}</span>
                         )}
                       </div>
 
-                      {/* Armor Class */}
-                      <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
-                        <span className="flex items-center gap-1 font-medium bg-dungeon-950 px-2 py-0.5 rounded border border-dungeon-800 text-slate-300">
-                          <Shield className="w-3.5 h-3.5 text-amber-400" />
-                          AC: {c.ac}
-                        </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-bold text-slate-100 text-lg truncate">{c.name}</h3>
+                          {c.is_player ? (
+                            <span className="text-[10px] bg-blue-500/20 text-blue-300 font-semibold px-2 py-0.5 rounded border border-blue-500/30 flex items-center gap-1">
+                              <UserCheck className="w-3 h-3" /> Jugador
+                            </span>
+                          ) : (
+                            <span className="text-[10px] bg-red-500/20 text-red-300 font-semibold px-2 py-0.5 rounded border border-red-500/30 flex items-center gap-1">
+                              <Skull className="w-3 h-3" /> Enemigo
+                            </span>
+                          )}
+                          {isActive && (
+                            <motion.span
+                              initial={{ opacity: 0, scale: 0.8 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded uppercase tracking-wide"
+                            >
+                              Turno
+                            </motion.span>
+                          )}
+                        </div>
+
+                        {/* Armor Class */}
+                        <div className="flex items-center gap-3 text-xs text-slate-400 mt-1">
+                          <span className="flex items-center gap-1 font-medium bg-dungeon-950 px-2 py-0.5 rounded border border-dungeon-800 text-slate-300">
+                            <Shield className="w-3.5 h-3.5 text-amber-400" />
+                            AC: {c.ac}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* HP Controls */}
-                  <div className="flex flex-col items-center gap-1 min-w-[200px] flex-1 max-w-xs">
-                    <div className="flex items-center justify-between w-full text-xs font-semibold text-slate-300">
-                      <span className="flex items-center gap-1 text-red-400">
-                        <Heart className="w-3.5 h-3.5 fill-red-400/20" /> HP:
-                      </span>
-                      <span>
-                        {c.hp_current} / {c.hp_max}
-                      </span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full bg-dungeon-950 h-2 rounded-full overflow-hidden border border-dungeon-800">
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          hpPercent > 50
-                            ? 'bg-emerald-500'
-                            : hpPercent > 20
-                            ? 'bg-amber-500'
-                            : 'bg-red-600'
-                        }`}
-                        style={{ width: `${hpPercent}%` }}
-                      />
-                    </div>
-
-                    {/* Quick HP Adjustment Buttons */}
-                    <div className="flex items-center gap-1 mt-1">
-                      <button
-                        onClick={() => handleHpChange(c.id, -5)}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded border border-red-500/20"
-                      >
-                        -5
-                      </button>
-                      <button
-                        onClick={() => handleHpChange(c.id, -1)}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded border border-red-500/20"
-                      >
-                        -1
-                      </button>
-                      <button
-                        onClick={() => handleHpChange(c.id, 1)}
-                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded border border-emerald-500/20"
-                      >
-                        +1
-                      </button>
-                      <button
-                        onClick={() => handleHpChange(c.id, 5)}
-                        className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded border border-emerald-500/20"
-                      >
-                        +5
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Conditions & Actions */}
-                  <div className="flex items-center gap-2">
-                    {/* Conditions Pill Selector */}
-                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                      {c.conditions.map(cond => (
-                        <span
-                          key={cond}
-                          onClick={() => handleToggleCondition(c.id, cond)}
-                          className="cursor-pointer text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded hover:bg-purple-900 transition"
-                          title="Haz clic para remover condición"
-                        >
-                          {cond} ×
+                    {/* HP Controls */}
+                    <div className="relative flex flex-col items-center gap-1 min-w-[170px] flex-1 max-w-xs">
+                      <div className="flex items-center justify-between w-full text-xs font-semibold text-slate-300">
+                        <span className="flex items-center gap-1 text-red-400">
+                          <Heart className="w-3.5 h-3.5 fill-red-400/20" /> HP:
                         </span>
-                      ))}
-                      <select
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleToggleCondition(c.id, e.target.value);
-                            e.target.value = '';
-                          }
-                        }}
-                        className="bg-dungeon-950 border border-dungeon-800 text-slate-400 text-xs rounded px-1.5 py-0.5 focus:outline-none focus:border-amber-500"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>+ Estado</option>
-                        {AVAILABLE_CONDITIONS.map(cond => (
-                          <option key={cond} value={cond}>
-                            {cond}
-                          </option>
-                        ))}
-                      </select>
+                        <span className="flex items-center overflow-hidden">
+                          <AnimatePresence mode="popLayout" initial={false}>
+                            <motion.span
+                              key={c.hp_current}
+                              initial={{ y: -10, opacity: 0 }}
+                              animate={{ y: 0, opacity: 1 }}
+                              exit={{ y: 10, opacity: 0 }}
+                              transition={{ duration: 0.16 }}
+                            >
+                              {c.hp_current} / {c.hp_max}
+                            </motion.span>
+                          </AnimatePresence>
+                        </span>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className="w-full bg-dungeon-950 h-2 rounded-full overflow-hidden border border-dungeon-800">
+                        <motion.div
+                          className={`h-full ${
+                            hpPercent > 50 ? 'bg-emerald-500' : hpPercent > 20 ? 'bg-amber-500' : 'bg-red-600'
+                          }`}
+                          initial={false}
+                          animate={{ width: `${hpPercent}%` }}
+                          transition={{ duration: 0.35, ease: 'easeOut' }}
+                        />
+                      </div>
+
+                      {/* Quick HP Adjustment Buttons */}
+                      <div className="flex items-center gap-1 mt-1">
+                        <button
+                          onClick={() => handleHpChange(c.id, -5)}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500/20 min-w-[34px]"
+                        >
+                          -5
+                        </button>
+                        <button
+                          onClick={() => handleHpChange(c.id, -1)}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500/20 min-w-[34px]"
+                        >
+                          -1
+                        </button>
+                        <button
+                          onClick={() => handleHpChange(c.id, 1)}
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded border border-emerald-500/20 min-w-[34px]"
+                        >
+                          +1
+                        </button>
+                        <button
+                          onClick={() => handleHpChange(c.id, 5)}
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded border border-emerald-500/20 min-w-[34px]"
+                        >
+                          +5
+                        </button>
+                      </div>
+
+                      {/* Floater de daño/curación */}
+                      <AnimatePresence>
+                        {floater && (
+                          <motion.span
+                            key={floater.key}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: -16 }}
+                            exit={{ opacity: 0, y: -26 }}
+                            transition={{ duration: 0.7, ease: 'easeOut' }}
+                            className={`absolute -top-1 right-0 text-sm font-black pointer-events-none ${
+                              floater.amount < 0 ? 'text-red-400' : 'text-emerald-400'
+                            }`}
+                          >
+                            {floater.amount > 0 ? '+' : ''}
+                            {floater.amount}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
                     </div>
 
-                    <button
-                      onClick={() => handleRemoveCombatant(c.id)}
-                      className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
-                      title="Eliminar de la iniciativa"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {/* Conditions & Actions */}
+                    <div className="flex items-start gap-2 flex-1 min-w-[200px] justify-end">
+                      {/* Conditions Pill Selector + temporizador */}
+                      <div className="flex flex-wrap gap-1 max-w-full sm:max-w-[280px] justify-start">
+                        <AnimatePresence initial={false}>
+                          {c.conditions.map(cond => {
+                            const rounds = c.condition_rounds?.[cond];
+                            return (
+                              <motion.span
+                                key={cond}
+                                layout
+                                initial={{ opacity: 0, scale: 0.85 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.85 }}
+                                transition={{ duration: 0.15 }}
+                                className="inline-flex items-center gap-1 text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded hover:bg-purple-900 transition"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleCondition(c.id, cond)}
+                                  title="Haz clic para remover la condición"
+                                  className="hover:text-purple-100 transition"
+                                >
+                                  {cond}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCycleDuration(c.id, cond)}
+                                  title="Clic para cambiar las rondas restantes"
+                                  className={`inline-flex items-center gap-0.5 font-bold pl-1 border-l border-purple-800 ${
+                                    rounds == null ? 'text-slate-400' : 'text-amber-400'
+                                  }`}
+                                >
+                                  <Timer className="w-2.5 h-2.5" />
+                                  {rounds == null ? '∞' : rounds}
+                                </button>
+                              </motion.span>
+                            );
+                          })}
+                        </AnimatePresence>
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleToggleCondition(c.id, e.target.value);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="bg-dungeon-950 border border-dungeon-800 text-slate-400 text-xs rounded px-1.5 py-0.5 focus:outline-none focus:border-amber-500"
+                          defaultValue=""
+                          aria-label={`Añadir estado a ${c.name}`}
+                        >
+                          <option value="" disabled>+ Estado</option>
+                          {AVAILABLE_CONDITIONS.map(cond => (
+                            <option key={cond} value={cond}>
+                              {cond}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={() => handleRemoveCombatant(c.id)}
+                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition shrink-0"
+                        title="Eliminar de la iniciativa"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       )}
 
@@ -435,6 +702,19 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                     className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1">
+                  Modificador de Destreza (para lanzar iniciativa)
+                </label>
+                <input
+                  type="number"
+                  value={newDexMod}
+                  onChange={e => setNewDexMod(Number(e.target.value))}
+                  disabled={isPlayer}
+                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none disabled:opacity-50"
+                />
               </div>
 
               <div className="flex items-center gap-2 pt-2">
@@ -496,19 +776,23 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   {monsters.map(m => (
                     <div
                       key={m.id}
-                      className="bg-dungeon-950 border border-dungeon-800 hover:border-amber-500/50 rounded-lg p-3 flex items-center justify-between transition"
+                      className="bg-dungeon-950 border border-dungeon-800 hover:border-amber-500/50 rounded-lg p-3 flex items-center justify-between gap-2 transition"
                     >
-                      <div>
-                        <span className="font-bold text-slate-200 text-sm">{m.name}</span>
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-200 text-sm truncate block">{m.name}</span>
                         <div className="text-xs text-slate-400 flex items-center gap-3 mt-0.5">
                           <span>CR: {m.cr}</span>
                           <span>AC: {m.ac}</span>
                           <span>HP: {m.hp_max}</span>
+                          <span className="text-amber-400">
+                            DEST {m.stats.dex} ({Math.floor((m.stats.dex - 10) / 2) >= 0 ? '+' : ''}
+                            {Math.floor((m.stats.dex - 10) / 2)})
+                          </span>
                         </div>
                       </div>
                       <button
                         onClick={() => handleImportMonster(m)}
-                        className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition"
+                        className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition shrink-0"
                       >
                         + Añadir al Combate
                       </button>
@@ -525,17 +809,17 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   {npcs.map(n => (
                     <div
                       key={n.id}
-                      className="bg-dungeon-950 border border-dungeon-800 hover:border-amber-500/50 rounded-lg p-3 flex items-center justify-between transition"
+                      className="bg-dungeon-950 border border-dungeon-800 hover:border-amber-500/50 rounded-lg p-3 flex items-center justify-between gap-2 transition"
                     >
-                      <div>
-                        <span className="font-bold text-slate-200 text-sm">{n.name}</span>
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-200 text-sm truncate block">{n.name}</span>
                         <div className="text-xs text-slate-400 mt-0.5">
                           {n.race} • {n.disposition}
                         </div>
                       </div>
                       <button
                         onClick={() => handleImportNpc(n)}
-                        className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition"
+                        className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition shrink-0"
                       >
                         + Añadir al Combate
                       </button>

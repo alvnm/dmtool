@@ -82,6 +82,13 @@ export interface Combatant {
   ac: number;
   is_player: boolean;
   conditions: string[];
+  /**
+   * Rondas restantes de cada condición. `null` = hasta que se salve;
+   * la clave puede no existir (se trata como temporal indefinido).
+   */
+  condition_rounds?: Record<string, number | null>;
+  /** Modificador de DEST usado por el botón "Lanzar Iniciativa". */
+  dex_mod?: number;
   turn_order?: number;
   created_at?: string;
 }

@@ -1,11 +1,15 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Swords, Backpack, Skull, 
   Users, BookOpen, Database, Sparkles, LogOut
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
+import { usePersistentState } from '@/lib/usePersistentState';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { Toolbox } from '@/components/tools/Toolbox';
 import { loadBestiary, loadGrimoire, mergeById } from '@/lib/compendium';
 import { 
   INITIAL_COMBATANTS, INITIAL_ITEMS, INITIAL_MONSTERS, 
@@ -20,18 +24,20 @@ import { NpcManager } from '@/components/npcs/NpcManager';
 import { Spellbook } from '@/components/spells/Spellbook';
 
 export default function MainApp() {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // La pestaña activa también se recuerda: si el DM refresca a mitad de combate
+  // vuelve justo donde estaba.
+  const [activeTab, setActiveTab] = usePersistentState<string>('active-tab', 'dashboard');
   const [supabaseActive, setSupabaseActive] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
-  // App State
-  const [combatants, setCombatants] = useState<Combatant[]>(INITIAL_COMBATANTS);
-  const [items, setItems] = useState<InventoryItem[]>(INITIAL_ITEMS);
+  // App State (persistidos en localStorage: la sesión local sobrevive a un refresco)
+  const [combatants, setCombatants] = usePersistentState<Combatant[]>('combatants', INITIAL_COMBATANTS);
+  const [items, setItems] = usePersistentState<InventoryItem[]>('items', INITIAL_ITEMS);
   const [monsters, setMonsters] = useState<Monster[]>(INITIAL_MONSTERS);
-  const [npcs, setNpcs] = useState<NPC[]>(INITIAL_NPCS);
+  const [npcs, setNpcs] = usePersistentState<NPC[]>('npcs', INITIAL_NPCS);
   const [spells, setSpells] = useState<Spell[]>(INITIAL_SPELLS);
-  const [notes, setNotes] = useState<DMNote[]>(INITIAL_NOTES);
+  const [notes, setNotes] = usePersistentState<DMNote[]>('notes', INITIAL_NOTES);
 
   // Bestiario + grimorio SRD (data/compendium) como base local de la app.
   const loadCompendium = useCallback(async () => {
@@ -68,8 +74,7 @@ export default function MainApp() {
   }, []);
 
   useEffect(() => {
-    const configured = isSupabaseConfigured();
-    setSupabaseActive(configured);
+    const configured = isSupabaseConfigured();    setSupabaseActive(configured);
 
     let cancelled = false;
     let sub: { subscription: { unsubscribe: () => void } } | undefined;
@@ -98,6 +103,19 @@ export default function MainApp() {
     };
   }, [loadCompendium, loadDataFromSupabase]);
 
+  // PWA: registrar el service worker para uso offline en tablets del DM.
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+    const register = () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Sin SW la app sigue funcionando igual, sólo pierde el modo offline.
+      });
+    };
+    if (document.readyState === 'complete') register();
+    else window.addEventListener('load', register);
+    return () => window.removeEventListener('load', register);
+  }, []);
+
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
@@ -111,7 +129,8 @@ export default function MainApp() {
   };
 
   const handleSendMonsterToCombat = (monster: Monster) => {
-    const initRoll = Math.floor(Math.random() * 20) + 1 + Math.floor((monster.stats.dex - 10) / 2);
+    const dexMod = Math.floor((monster.stats.dex - 10) / 2);
+    const initRoll = Math.floor(Math.random() * 20) + 1 + dexMod;
     const imported: Combatant = {
       id: `comb-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
       name: monster.name,
@@ -121,6 +140,8 @@ export default function MainApp() {
       ac: monster.ac,
       is_player: false,
       conditions: [],
+      condition_rounds: {},
+      dex_mod: dexMod,
     };
     const updated = [...combatants, imported].sort((a, b) => b.initiative - a.initiative);
     setCombatants(updated);
@@ -178,14 +199,15 @@ export default function MainApp() {
             </nav>
 
             {/* Supabase Status Pill */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pl-2">
+              <ThemeToggle />
               {supabaseActive ? (
                 <span className="flex items-center gap-1.5 text-xs bg-emerald-950 text-emerald-300 border border-emerald-800 px-3 py-1 rounded-full font-medium" title={userEmail ?? undefined}>
-                  <Database className="w-3.5 h-3.5 text-emerald-400" /> {userEmail ?? 'Conectado'}
+                  <Database className="w-3.5 h-3.5 text-emerald-400" /> <span className="hidden sm:inline">{userEmail ?? 'Conectado'}</span><span className="sm:hidden">En línea</span>
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 text-xs bg-amber-950/60 text-amber-300 border border-amber-800/80 px-3 py-1 rounded-full font-medium" title="Modo local activado. Conecta Supabase en .env.local para sincronización en la nube.">
-                  <Database className="w-3.5 h-3.5 text-amber-400" /> Modo Local (Demo)
+                <span className="flex items-center gap-1.5 text-xs bg-amber-950/60 text-amber-300 border border-amber-800/80 px-3 py-1 rounded-full font-medium" title="Modo local: iniciativa, inventario, NPCs y notas se guardan solos en este navegador (localStorage). Conecta Supabase en .env.local para sincronizar en la nube.">
+                  <Database className="w-3.5 h-3.5 text-amber-400" /> <span className="hidden sm:inline">Modo Local (Demo)</span><span className="sm:hidden">Local</span>
                 </span>
               )}
               {supabaseActive && (
@@ -227,6 +249,15 @@ export default function MainApp() {
 
       {/* Main Content Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        {/* Transición suave al cambiar de sección */}
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+        >
         {activeTab === 'dashboard' && (
           <DmDashboard
             combatants={combatants}
@@ -277,7 +308,12 @@ export default function MainApp() {
             onUpdateSpells={setSpells}
           />
         )}
+        </motion.div>
+        </AnimatePresence>
       </main>
+
+      {/* Herramientas flotantes: dados + generador de nombres */}
+      <Toolbox />
 
       {/* Footer */}
       <footer className="bg-dungeon-900 border-t border-dungeon-800 py-4 text-center text-xs text-slate-500">
