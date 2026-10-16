@@ -328,40 +328,45 @@ CREATE TRIGGER trg_set_updated_at BEFORE UPDATE ON public.dm_notes
 
 -- SEED DATA (Datos de Prueba Iniciales)
 
--- 1. Campaña de Prueba (solo si existe un usuario autenticado de prueba;
--- con RLS activo, las filas siempre pertenecen a un DM concreto)
+-- 1. Campaña de Prueba y entidades dependientes:
+-- Si existe un usuario en auth.users, se crea la campaña y se asocian monstruos, objetos y encuentros.
+-- Si NO existe ningún usuario, se omite de forma segura sin romper la ejecución del script.
 DO $$
-DECLARE v_user UUID;
+DECLARE 
+  v_user UUID;
+  c_id UUID := '11111111-1111-1111-1111-111111111111';
+  e_id UUID := '22222222-2222-2222-2222-222222222222';
 BEGIN
   SELECT id INTO v_user FROM auth.users ORDER BY created_at ASC LIMIT 1;
   IF v_user IS NOT NULL THEN
     INSERT INTO public.campaigns (id, name, description, system, dm_user_id)
-    VALUES ('11111111-1111-1111-1111-111111111111', 'La Mina Perdida de Phandelver',
-            'Campaña clásica de introducción a D&D 5e', 'D&D 5e', v_user)
+    VALUES (c_id, 'La Mina Perdida de Phandelver', 'Campaña clásica de introducción a D&D 5e', 'D&D 5e', v_user)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Monstruos asociados a la campaña de prueba
+    INSERT INTO public.monsters (campaign_id, name, size, type, alignment, ac, hp_max, speed, stats, cr, traits, actions) VALUES
+    (c_id, 'Duende (Goblin)', 'Pequeño', 'Humanoide', 'Neutral Malvado', 15, 7, '30 ft.', '{"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8}', '1/4',
+    '[{"name": "Escape Escurridizo", "desc": "Puede Destrabar o Esconderse como acción adicional en su turno."}]',
+    '[{"name": "Cimitarra", "desc": "+4 al ataque, alcance 5 ft. Daño: 5 (1d6 + 2) cortante."}, {"name": "Arco Corto", "desc": "+4 al ataque, alcance 80/320 ft. Daño: 5 (1d6 + 2) perforante."}]'),
+
+    (c_id, 'Dragón Rojo Joven', 'Grande', 'Dragón', 'Caótico Malvado', 18, 178, '40 ft., volar 80 ft.', '{"str": 23, "dex": 10, "con": 21, "int": 14, "wis": 11, "cha": 19}', '10',
+    '[{"name": "Vista Ciega", "desc": "Percepción a ciegas 30 ft. y visión en oscuridad 120 ft."}]',
+    '[{"name": "Multiataque", "desc": "Realiza tres ataques: uno con mordedura y dos con garras."}, {"name": "Aliento de Fuego", "desc": "Cono de 30 ft., salvación de Destreza DC 17 o 56 (16d6) de daño de fuego."}]');
+
+    -- Objetos e Inventario
+    INSERT INTO public.items (campaign_id, name, type, rarity, weight, value_gp, assigned_to, description) VALUES
+    (c_id, 'Poción de Curación', 'Poción', 'Común', 0.5, 50, 'Bolsa General', 'Restaura 2d4+2 puntos de vida.'),
+    (c_id, 'Espada Larga +1', 'Arma', 'Poco Común', 3.0, 500, 'Valerius', '+1 al ataque y daño con este arma mágica.');
+
+    -- Encuentros
+    INSERT INTO public.encounters (id, campaign_id, title, location, difficulty, status, notes) VALUES
+    (e_id, c_id, 'Emboscada en el Camino Real', 'Camino a Phandalin', 'Medio', 'En Curso', 'Los goblins atacan desde los arbustos al cruzar el carro.')
     ON CONFLICT (id) DO NOTHING;
   END IF;
 END $$;
 
--- 2. Monstruos Populares
-INSERT INTO public.monsters (campaign_id, name, size, type, alignment, ac, hp_max, speed, stats, cr, traits, actions) VALUES
-('11111111-1111-1111-1111-111111111111', 'Duende (Goblin)', 'Pequeño', 'Humanoide', 'Neutral Malvado', 15, 7, '30 ft.', '{"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8}', '1/4',
-'[{"name": "Escape Escurridizo", "desc": "Puede Destrabar o Esconderse como acción adicional en su turno."}]',
-'[{"name": "Cimitarra", "desc": "+4 al ataque, alcance 5 ft. Daño: 5 (1d6 + 2) cortante."}, {"name": "Arco Corto", "desc": "+4 al ataque, alcance 80/320 ft. Daño: 5 (1d6 + 2) perforante."}]'),
-
-('11111111-1111-1111-1111-111111111111', 'Dragón Rojo Joven', 'Grande', 'Dragón', 'Caótico Malvado', 18, 178, '40 ft., volar 80 ft.', '{"str": 23, "dex": 10, "con": 21, "int": 14, "wis": 11, "cha": 19}', '10',
-'[{"name": "Vista Ciega", "desc": "Percepción a ciegas 30 ft. y visión en oscuridad 120 ft."}]',
-'[{"name": "Multiataque", "desc": "Realiza tres ataques: uno con mordedura y dos con garras."}, {"name": "Aliento de Fuego", "desc": "Cono de 30 ft., salvación de Destreza DC 17 o 56 (16d6) de daño de fuego."}]');
-
--- 3. Hechizos Populares
+-- 2. Hechizos Populares (compendio global de hechizos; no dependen de ninguna campaña)
 INSERT INTO public.spells (name, level, school, casting_time, range, components, duration, description, classes) VALUES
 ('Bola de Fuego (Fireball)', 3, 'Evocación', '1 Acción', '150 ft.', 'V, S, M (una bola de guano y azufre)', 'Instantáneo', 'Una brillante centella brota de tu dedo. Explota en una esfera de fuego de 20 pies de radio. Cada criatura sufre 8d6 de daño de fuego en salvación fallida de Destreza.', ARRAY['Mago', 'Hechicero']),
 ('Curar Heridas (Cure Wounds)', 1, 'Evocación', '1 Acción', 'Toque', 'V, S', 'Instantáneo', 'Una criatura que toques recupera 1d8 + tu modificador por habilidad de conjuros.', ARRAY['Clérigo', 'Bardo', 'Paladín', 'Explorador', 'Druida']);
 
--- 4. Objetos e Inventario
-INSERT INTO public.items (campaign_id, name, type, rarity, weight, value_gp, assigned_to, description) VALUES
-('11111111-1111-1111-1111-111111111111', 'Poción de Curación', 'Poción', 'Común', 0.5, 50, 'Bolsa General', 'Restaura 2d4+2 puntos de vida.'),
-('11111111-1111-1111-1111-111111111111', 'Espada Larga +1', 'Arma', 'Poco Común', 3.0, 500, 'Valerius', '+1 al ataque y daño con este arma mágica.');
-
--- 5. Encuentros
-INSERT INTO public.encounters (id, campaign_id, title, location, difficulty, status, notes) VALUES
-('22222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 'Emboscada en el Camino Real', 'Camino a Phandalin', 'Medio', 'En Curso', 'Los goblins atacan desde los arbustos al cruzar el carro.');
