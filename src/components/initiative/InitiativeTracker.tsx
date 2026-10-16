@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Combatant, Monster, NPC } from '@/types';
 import { 
-  Swords, Plus, Trash2, Shield, Heart, ArrowRight, 
+  Swords, Plus, Trash2, Shield, Heart, ArrowRight, ArrowLeft,
   RotateCcw, Sparkles, UserCheck, Skull, Dices, Timer, Maximize2, Minimize2,
   Share2, Link2, Copy, Eye, EyeOff, Radio, Check
 } from 'lucide-react';
@@ -241,6 +241,19 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
       id: Date.now(),
       text: '🎲 Iniciativa lanzada para monstruos y NPCs (1d20 + mod. DEST).',
     });
+  };
+
+  /** Retrocede el turno (y descuenta ronda si retrocede al final de la lista). */
+  const handlePrevTurn = () => {
+    if (combatants.length === 0) return;
+    if (currentTurnIndex === 0) {
+      if (round > 1) {
+        setRound(prev => prev - 1);
+        setCurrentTurnIndex(combatants.length - 1);
+      }
+    } else {
+      setCurrentTurnIndex(prev => prev - 1);
+    }
   };
 
   /** Avanza el turno; al cerrar la ronda descuenta los temporizadores. */
@@ -541,14 +554,26 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             Lanzar Iniciativa
           </button>
 
-          <button
-            onClick={handleNextTurn}
-            disabled={combatants.length === 0}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg shadow transition disabled:opacity-50"
-          >
-            Siguiente Turno
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="inline-flex rounded-lg shadow-sm border border-amber-500/40 overflow-hidden">
+            <button
+              onClick={handlePrevTurn}
+              disabled={combatants.length === 0 || (round === 1 && currentTurnIndex === 0)}
+              className="flex items-center gap-1 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 font-medium px-3 py-2 text-sm border-r border-amber-500/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Turno Anterior"
+            >
+              <ArrowLeft className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">Anterior</span>
+            </button>
+            <button
+              onClick={handleNextTurn}
+              disabled={combatants.length === 0}
+              className="flex items-center gap-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold px-4 py-2 text-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Siguiente Turno (Espacio o Enter)"
+            >
+              <span>Siguiente</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
 
           <button
             onClick={handleResetCombat}

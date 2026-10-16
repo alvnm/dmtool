@@ -73,30 +73,34 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
 
   const handleSaveItem = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const cleanName = name.trim();
+    if (!cleanName) return;
+
+    const safeWeight = Math.max(0, Number(weight) || 0);
+    const safeValueGp = Math.max(0, Number(valueGp) || 0);
 
     if (editingItem) {
       const updated = items.map(i => i.id === editingItem.id ? {
         ...i,
-        name,
+        name: cleanName,
         type,
         rarity,
-        weight: Number(weight),
-        value_gp: Number(valueGp),
-        assigned_to: assignedTo,
-        description,
+        weight: safeWeight,
+        value_gp: safeValueGp,
+        assigned_to: assignedTo.trim() || 'Bolsa General',
+        description: description.trim(),
       } : i);
       onUpdateItems(updated);
     } else {
       const newItem: InventoryItem = {
         id: `item-${Date.now()}`,
-        name,
+        name: cleanName,
         type,
         rarity,
-        weight: Number(weight),
-        value_gp: Number(valueGp),
-        assigned_to: assignedTo || 'Bolsa General',
-        description,
+        weight: safeWeight,
+        value_gp: safeValueGp,
+        assigned_to: assignedTo.trim() || 'Bolsa General',
+        description: description.trim(),
       };
       onUpdateItems([...items, newItem]);
     }
