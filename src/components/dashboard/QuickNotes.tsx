@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DMNote } from '@/types';
 import { FileText, Plus, Pin, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
@@ -8,11 +8,14 @@ import { FileText, Plus, Pin, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
 interface QuickNotesProps {
   notes: DMNote[];
   onUpdateNotes: (notes: DMNote[]) => void;
+  /** Nota resaltada desde la paleta de comandos (Ctrl+K). */
+  highlightNoteId?: string | null;
 }
 
 export const QuickNotes: React.FC<QuickNotesProps> = ({
   notes,
   onUpdateNotes,
+  highlightNoteId,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,6 +58,13 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
     onUpdateNotes(notes.filter(n => n.id !== id));
   };
 
+  // Al saltar a una nota desde la paleta, la trae al centro del panel.
+  useEffect(() => {
+    if (!highlightNoteId) return;
+    const el = document.querySelector(`[data-note-id="${highlightNoteId}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [highlightNoteId]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -93,6 +103,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
           <motion.div
             key={n.id}
             layout
+            data-note-id={n.id}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, x: 16, transition: { duration: 0.15 } }}
@@ -101,6 +112,8 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
               n.pinned
                 ? 'bg-amber-950/20 border-amber-500/50'
                 : 'bg-dungeon-950 border-dungeon-800'
+            } ${
+              highlightNoteId === n.id ? 'ring-2 ring-amber-500 shadow-lg shadow-amber-500/20' : ''
             }`}
           >
             <div className="flex items-start justify-between gap-2 mb-1">

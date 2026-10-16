@@ -43,3 +43,43 @@ export function roll(notation: string): DiceRoll {
 export function rollD20(modifier = 0): number {
   return 1 + Math.floor(Math.random() * 20) + modifier;
 }
+
+export type RollMode = 'normal' | 'ventaja' | 'desventaja';
+
+export interface AdvantageRoll {
+  mode: RollMode;
+  /** Notación mostrada al DM, p. ej. "1d20+5 (ventaja)". */
+  notation: string;
+  /** Las dos tiradas crudas de d20 (vacía en modo normal). */
+  rolls: [number, number] | null;
+  /** Tirada elegida (la mayor en ventaja, la menor en desventaja). */
+  kept: number;
+  modifier: number;
+  total: number;
+}
+
+/**
+ * Tira 1d20 con ventaja/desventaja (2d20 y nos quedamos con uno) + modificador.
+ * Es el dado del 90% de las tiradas de un monstruo en combate, así que vive
+ * aquí para poder reutilizarse desde la caja de dados y desde cualquier widget.
+ */
+export function rollD20WithMode(modifier = 0, mode: RollMode = 'normal'): AdvantageRoll {
+  const first = 1 + Math.floor(Math.random() * 20);
+  if (mode === 'normal') {
+    return { mode, notation: notate(1, 20, modifier), rolls: null, kept: first, modifier, total: first + modifier };
+  }
+  const second = 1 + Math.floor(Math.random() * 20);
+  const kept = mode === 'ventaja' ? Math.max(first, second) : Math.min(first, second);
+  return {
+    mode,
+    notation: `${notate(1, 20, modifier)} (${mode})`,
+    rolls: [first, second],
+    kept,
+    modifier,
+    total: kept + modifier,
+  };
+}
+
+function notate(count: number, sides: number, modifier: number): string {
+  return `${count}d${sides}${modifier ? (modifier > 0 ? `+${modifier}` : modifier) : ''}`;
+}

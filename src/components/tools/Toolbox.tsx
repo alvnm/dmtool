@@ -2,12 +2,14 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dices, UserRound, X, Copy, Trash2, Wand2, Check } from 'lucide-react';
-import { roll } from '@/lib/dice';
+import { Dices, UserRound, X, Copy, Trash2, Wand2, Check, UserPlus, Users } from 'lucide-react';
+import { roll, rollD20WithMode, type RollMode } from '@/lib/dice';
 import { NAME_POOLS, randomName, type NameCategory } from '@/lib/names';
+import { generateQuickNpc, type QuickNpc } from '@/lib/npcGenerator';
+import { NPC } from '@/types';
 import { usePersistentState } from '@/lib/usePersistentState';
 
-type TabId = 'dados' | 'nombres';
+type TabId = 'dados' | 'nombres' | 'npc';
 
 interface HistoryEntry {
   id: number;
@@ -22,9 +24,15 @@ const MAX_HISTORY = 25;
 
 /**
  * Toolbox flotante del DM: lanzador de dados con historial + generador de
- * nombres aleatorios. El historial se guarda en localStorage.
+ * nombres aleatorios + NPC improvisado al vuelo. El historial se guarda en
+ * localStorage.
  */
-export const Toolbox: React.FC = () => {
+export interface ToolboxProps {
+  /** Guarda un NPC generado al vuelo en la lista del DM. */
+  onSaveNpc?: (npc: NPC) => void;
+}
+
+export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TabId>('dados');
 
@@ -38,6 +46,10 @@ export const Toolbox: React.FC = () => {
   const [category, setCategory] = usePersistentState<NameCategory>('name-category', 'Humano');
   const [generated, setGenerated] = useState<{ id: number; value: string } | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // NPC al vuelo
+  const [quickNpc, setQuickNpc] = useState<QuickNpc | null>(null);
+  const [npcSaved, setNpcSaved] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,6 +94,34 @@ export const Toolbox: React.FC = () => {
     }
   };
 
+  /**
+   * Tira 1d20 con ventaja/desventaja. Si el campo de notación contiene un
+   * modificador de d20 (1d20+5) se aplica; si no, tira con +0.
+   */
+  const doD20WithMode = (mode: Exclude<RollMode, 'normal'>) => {
+    let modifier = 0;
+    try {
+      const parsed = roll(notation);
+      if (parsed.count === 1 && parsed.sides === 20) modifier = parsed.modifier;
+    } catch {
+      // Notación libre: se tira con +0 en lugar de romper el flujo de la partida.
+    }
+    const result = rollD20WithMode(modifier, mode);
+    setError(null);
+    setLastTotal(result.total);
+    setHistory(prev =>
+      [
+        {
+          id: Date.now() + Math.random(),
+          notation: result.notation,
+          total: result.total,
+          detail: `${result.rolls![0]}, ${result.rolls![1]} → ${result.kept}${modifier ? ` ${modifier > 0 ? '+' : ''}${modifier}` : ''}`,
+        },
+        ...prev,
+      ].slice(0, MAX_HISTORY)
+    );
+  };
+
   const generateName = () => {
     const value = randomName(category);
     setGenerated({ id: Date.now(), value });
@@ -102,6 +142,18 @@ export const Toolbox: React.FC = () => {
 
   const activePool = NAME_POOLS.find(p => p.category === category) ?? NAME_POOLS[0];
 
+  const generateNpc = () => {
+    setQuickNpc(generateQuickNpc());
+    setNpcSaved(false);
+  };
+
+  const saveQuickNpc = () => {
+    if (!quickNpc || !onSaveNpc) return;
+    const { job: _job, trait: _trait, ...npc } = quickNpc;
+    onSaveNpc(npc);
+    setNpcSaved(true);
+  };
+
   return (
     <>
       {/* Botón flotante */}
@@ -109,11 +161,11 @@ export const Toolbox: React.FC = () => {
         type="button"
         onClick={() => setOpen(prev => !prev)}
         aria-expanded={open}
-        aria-label={open ? 'Cerrar herramientas del DM' : 'Abrir herramientas del DM (dados y nombres)'}
+        aria-label={open ? 'Cerrar herramientas del DM' : 'Abrir herramientas del DM (dados, nombres y NPCs)'}
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         className="fixed z-50 bottom-4 right-4 mb-[env(safe-area-inset-bottom)] w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 shadow-xl shadow-amber-600/30 flex items-center justify-center border border-amber-400/60"
-        title="Herramientas del DM: dados y nombres"
+        title="Herramientas del DM: dados, nombres y NPC al vuelo"
       >
         {open ? <X className="w-6 h-6" /> : <Dices className="w-7 h-7" />}
       </motion.button>
@@ -147,6 +199,14 @@ export const Toolbox: React.FC = () => {
                 }`}
               >
                 <UserRound className="w-4 h-4" /> Nombres
+              </button>
+              <button
+                onClick={() => setTab('npc')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold transition ${
+                  tab === 'npc' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Users className="w-4 h-4" /> NPC
               </button>
             </div>
 
@@ -191,6 +251,24 @@ export const Toolbox: React.FC = () => {
                       </button>
                     ))}
                   </div>
+                  {/* Ventaja / Desventaja: el 90% de las tiradas de monstruos */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => doD20WithMode('ventaja')}
+                      className="flex items-center justify-center gap-1.5 text-[11px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 py-2 rounded transition min-h-[40px]"
+                      title="Tira 2d20 y quédate con el mayor"
+                    >
+                      1d20 Ventaja
+                    </button>
+                    <button
+                      onClick={() => doD20WithMode('desventaja')}
+                      className="flex items-center justify-center gap-1.5 text-[11px] font-bold bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 py-2 rounded transition min-h-[40px]"
+                      title="Tira 2d20 y quédate con el menor"
+                    >
+                      1d20 Desventaja
+                    </button>
+                  </div>
+
                   <div className="flex flex-wrap gap-1.5">
                     {QUICK_ROLLS.map(n => (
                       <button
@@ -255,7 +333,7 @@ export const Toolbox: React.FC = () => {
                     </AnimatePresence>
                   </ul>
                 </div>
-              ) : (
+              ) : tab === 'nombres' ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-1.5">
                     {NAME_POOLS.map(pool => (
@@ -311,6 +389,69 @@ export const Toolbox: React.FC = () => {
                     {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     {copied ? 'Copiado' : 'Copiar nombre'}
                   </button>
+                </div>
+              ) : (
+                /* NPC improvisado al vuelo: nombre + raza + actitud + secreto. */
+                <div className="space-y-3">
+                  <button
+                    onClick={generateNpc}
+                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-lg transition"
+                  >
+                    <Wand2 className="w-4 h-4" /> {quickNpc ? 'Otro NPC' : 'Generar NPC al vuelo'}
+                  </button>
+
+                  {!quickNpc ? (
+                    <p className="text-[11px] text-slate-500 text-center">
+                      ¿Los jugadores hablan con alguien improvisado? Un clic y tienes nombre,
+                      raza, actitud y un secreto listo para soltar.
+                    </p>
+                  ) : (
+                    <motion.div
+                      key={quickNpc.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.18 }}
+                      className="bg-dungeon-950 border border-dungeon-800 rounded-lg p-3 space-y-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-serif text-lg font-bold text-amber-400 truncate">{quickNpc.name}</p>
+                          <p className="text-[11px] text-slate-400">
+                            {quickNpc.race} • {quickNpc.job}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded border shrink-0 bg-dungeon-900 text-slate-300 border-dungeon-700">
+                          {quickNpc.disposition}
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-400">
+                        <span className="text-slate-500 font-semibold">Rasgo:</span> {quickNpc.trait}
+                      </p>
+                      <p className="text-[11px] text-purple-300 bg-purple-950/50 border border-purple-900 rounded p-2">
+                        <span className="font-bold">Secreto DM:</span> {quickNpc.secret_notes}
+                      </p>
+                    </motion.div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => quickNpc && navigator.clipboard?.writeText(`${quickNpc.name} (${quickNpc.race}, ${quickNpc.job}) — ${quickNpc.disposition}\nRasgo: ${quickNpc.trait}\nSecreto: ${quickNpc.secret_notes}`).catch(() => {})}
+                      disabled={!quickNpc}
+                      className="flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
+                    >
+                      <Copy className="w-3.5 h-3.5" /> Copiar
+                    </button>
+                    <button
+                      onClick={saveQuickNpc}
+                      disabled={!quickNpc || !onSaveNpc || npcSaved}
+                      className="flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-amber-300 text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
+                      title="Añade el NPC a tu lista de personajes"
+                    >
+                      {npcSaved ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <UserPlus className="w-3.5 h-3.5" />}
+                      {npcSaved ? 'Guardado' : 'Guardar'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

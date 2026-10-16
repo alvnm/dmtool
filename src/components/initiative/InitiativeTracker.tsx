@@ -20,8 +20,28 @@ const AVAILABLE_CONDITIONS = [
   'Cegado', 'Encantado', 'Ensordecido', 'Asustado', 
   'Agarrado', 'Incapacitado', 'Invisible', 'Paralizado', 
   'Petrificado', 'Envenenado', 'Derribado', 'Apresado', 
-  'Aturdido', 'Inconsciente', 'Concentración'
+  'Aturdido', 'Inconsciente', 'Concentración', 'Agotado'
 ];
+
+/** Icono rápido por condición para leer el estado de un vistazo. */
+const CONDITION_ICONS: Record<string, string> = {
+  Envenenado: '☠️',
+  Ciego: '🙈',
+  Paralizado: '⛓️',
+  'Concentración': '🎯',
+  Agotado: '😩',
+  Invisible: '👻',
+  Aturdido: '💫',
+  Inconsciente: '💤',
+  Asustado: '😨',
+  Agarrado: '🪢',
+  Incapacitado: '🚫',
+  Encantado: '💘',
+  Ensordecido: '🙉',
+  Petrificado: '🗿',
+  Derribado: '🩸',
+  Apresado: '🔒',
+};
 
 // Duraciones por defecto (en rondas) que el DM puede ciclar con un clic.
 const DURATION_CYCLE: Array<number | null> = [3, 1, 2, 4, 5, 10, null];
@@ -88,6 +108,26 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
+  /**
+   * Avanzar de turno con Espacio/Enter (atajo pedido por el DM para no
+   * apartar las manos del teclado). No roba la tecla cuando el foco está en
+   * un botón, campo de texto o cualquier control editable.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== ' ' && e.key !== 'Enter') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const el = document.activeElement;
+      if (el && !(el instanceof HTMLElement)) return;
+      if (el?.closest('input, textarea, select, button, a, [contenteditable="true"], [role="dialog"]')) return;
+      e.preventDefault();
+      handleNextTurn();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [combatants, currentTurnIndex]);
+
   const toggleFullscreen = async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -118,7 +158,10 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   const handleNextTurn = () => {
     if (combatants.length === 0) return;
 
-    if (currentTurnIndex >= combatants.length - 1) {
+    const wrapped = currentTurnIndex >= combatants.length - 1;
+    const nextIndex = wrapped ? 0 : currentTurnIndex + 1;
+
+    if (wrapped) {
       setCurrentTurnIndex(0);
       setRound(prev => prev + 1);
 
@@ -154,6 +197,24 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
       }
     } else {
       setCurrentTurnIndex(prev => prev + 1);
+    }
+
+    // Recordatorio al inicio del turno: condiciones por caducar y concentración.
+    const acting = combatants[nextIndex];
+    if (acting && acting.conditions.length > 0) {
+      const expiringSoon = acting.conditions.filter(
+        cond => acting.condition_rounds?.[cond] === 1
+      );
+      const concentrating = acting.conditions.includes('Concentración');
+      const parts: string[] = [];
+      if (expiringSoon.length) parts.push(`${expiringSoon.join(', ')} → caduca al final de su turno`);
+      if (concentrating) parts.push('¿sigue manteniendo la concentración?');
+      if (parts.length) {
+        setNotice({
+          id: Date.now(),
+          text: `⏰ ${acting.name}: ${parts.join(' • ')}`,
+        });
+      }
     }
   };
 
@@ -415,6 +476,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
           <AnimatePresence initial={false}>
             {combatants.map((c, index) => {
               const isActive = index === currentTurnIndex;
+              const defeated = c.hp_current <= 0;
               const hpPercent = Math.max(0, Math.min(100, Math.round((c.hp_current / c.hp_max) * 100)));
               const floater = floaters[c.id];
 
@@ -423,7 +485,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   key={c.id}
                   layout
                   initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={{ opacity: defeated ? 0.55 : 1, y: 0, filter: defeated ? 'grayscale(1)' : 'grayscale(0)' }}
                   exit={{ opacity: 0, x: -24, transition: { duration: 0.15 } }}
                   transition={{ duration: 0.22, ease: 'easeOut' }}
                   className={`relative rounded-xl border transition-all duration-200 overflow-hidden ${
@@ -462,7 +524,14 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-slate-100 text-lg truncate">{c.name}</h3>
+                          <h3 className={`font-bold text-slate-100 text-lg truncate ${defeated ? 'line-through decoration-red-500/70' : ''}`}>
+                            {c.name}
+                          </h3>
+                          {defeated && (
+                            <span className="text-[10px] bg-slate-700/60 text-slate-300 font-semibold px-2 py-0.5 rounded border border-slate-600 uppercase tracking-wide">
+                              Fuera de combate
+                            </span>
+                          )}
                           {c.is_player ? (
                             <span className="text-[10px] bg-blue-500/20 text-blue-300 font-semibold px-2 py-0.5 rounded border border-blue-500/30 flex items-center gap-1">
                               <UserCheck className="w-3 h-3" /> Jugador
@@ -526,29 +595,33 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                         />
                       </div>
 
-                      {/* Quick HP Adjustment Buttons */}
-                      <div className="flex items-center gap-1 mt-1">
+                      {/* Quick HP Adjustment Buttons (área táctil >= 44px en móvil) */}
+                      <div className="flex items-center gap-1.5 mt-1">
                         <button
                           onClick={() => handleHpChange(c.id, -5)}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500/20 min-w-[34px]"
+                          aria-label={`Restar 5 PV a ${c.name}`}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 rounded border border-red-500/20 min-w-[46px] min-h-[44px] sm:min-h-[38px] sm:min-w-[40px]"
                         >
                           -5
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, -1)}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-1 rounded border border-red-500/20 min-w-[34px]"
+                          aria-label={`Restar 1 PV a ${c.name}`}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 rounded border border-red-500/20 min-w-[46px] min-h-[44px] sm:min-h-[38px] sm:min-w-[40px]"
                         >
                           -1
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, 1)}
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded border border-emerald-500/20 min-w-[34px]"
+                          aria-label={`Sumar 1 PV a ${c.name}`}
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 rounded border border-emerald-500/20 min-w-[46px] min-h-[44px] sm:min-h-[38px] sm:min-w-[40px]"
                         >
                           +1
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, 5)}
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded border border-emerald-500/20 min-w-[34px]"
+                          aria-label={`Sumar 5 PV a ${c.name}`}
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 rounded border border-emerald-500/20 min-w-[46px] min-h-[44px] sm:min-h-[38px] sm:min-w-[40px]"
                         >
                           +5
                         </button>
@@ -595,8 +668,9 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                                   type="button"
                                   onClick={() => handleToggleCondition(c.id, cond)}
                                   title="Haz clic para remover la condición"
-                                  className="hover:text-purple-100 transition"
+                                  className="hover:text-purple-100 transition inline-flex items-center gap-1"
                                 >
+                                  <span aria-hidden="true">{CONDITION_ICONS[cond] ?? '•'}</span>
                                   {cond}
                                 </button>
                                 <button
@@ -621,7 +695,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                               e.target.value = '';
                             }
                           }}
-                          className="bg-dungeon-950 border border-dungeon-800 text-slate-400 text-xs rounded px-1.5 py-0.5 focus:outline-none focus:border-amber-500"
+                          className="bg-dungeon-950 border border-dungeon-800 text-slate-400 text-xs rounded px-1.5 py-1 min-h-[34px] focus:outline-none focus:border-amber-500"
                           defaultValue=""
                           aria-label={`Añadir estado a ${c.name}`}
                         >

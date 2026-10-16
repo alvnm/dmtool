@@ -16,6 +16,8 @@ interface DmDashboardProps {
   npcs: NPC[];
   spells: Spell[];
   notes: DMNote[];
+  /** Nota resaltada desde la paleta de comandos (Ctrl+K). */
+  highlightNoteId?: string | null;
   onUpdateNotes: (notes: DMNote[]) => void;
   onSelectTab: (tab: string) => void;
 }
@@ -27,6 +29,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
   npcs,
   spells,
   notes,
+  highlightNoteId,
   onUpdateNotes,
   onSelectTab,
 }) => {
@@ -166,12 +169,13 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
                     0,
                     Math.min(100, Math.round((c.hp_current / c.hp_max) * 100))
                   );
+                  const defeated = c.hp_current <= 0;
                   return (
                     <motion.div
                       key={c.id}
                       layout
                       initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
+                      animate={{ opacity: defeated ? 0.5 : 1, filter: defeated ? 'grayscale(1)' : 'grayscale(0)' }}
                       exit={{ opacity: 0, x: 12 }}
                       transition={{ duration: 0.2 }}
                       onClick={() => onSelectTab('initiative')}
@@ -190,8 +194,12 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
                           INIT: {c.initiative}
                         </span>
                         <div className="min-w-0">
-                          <span className="font-bold text-slate-200 truncate block">{c.name}</span>
-                          <span className="text-slate-500">AC: {c.ac}</span>
+                          <span className={`font-bold text-slate-200 truncate block ${defeated ? 'line-through decoration-red-500/70' : ''}`}>
+                            {c.name}
+                          </span>
+                          <span className="text-slate-500">
+                            AC: {c.ac}{defeated ? ' • Fuera de combate' : ''}
+                          </span>
                         </div>
                       </div>
 
@@ -229,7 +237,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
 
         {/* Right Column (1 col): DM Notes */}
         <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-5 shadow-lg">
-          <QuickNotes notes={notes} onUpdateNotes={onUpdateNotes} />
+          <QuickNotes notes={notes} onUpdateNotes={onUpdateNotes} highlightNoteId={highlightNoteId} />
         </div>
       </div>
     </div>

@@ -27,6 +27,16 @@ export function writeStorage(key: string, value: unknown): boolean {
   }
 }
 
+/** Borra una entrada persistida (si existe). */
+export function removeStorage(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(STORAGE_PREFIX + key);
+  } catch {
+    // Almacenamiento bloqueado: no hay nada que limpiar.
+  }
+}
+
 /**
  * useState con persistencia automática en localStorage.
  *
