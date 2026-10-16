@@ -24,26 +24,58 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
   const [category, setCategory] = useState<DMNote['category']>('General');
   const [pinned, setPinned] = useState(false);
 
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+
   const CATEGORIES = ['Todas', 'General', 'Lore', 'Misión', 'Sesión'];
 
   const filteredNotes = notes.filter(n => 
     selectedCategory === 'Todas' || n.category === selectedCategory
   ).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
+  const handleOpenAdd = () => {
+    setEditingNoteId(null);
+    setTitle('');
+    setContent('');
+    setCategory('General');
+    setPinned(false);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (n: DMNote) => {
+    setEditingNoteId(n.id);
+    setTitle(n.title);
+    setContent(n.content);
+    setCategory(n.category);
+    setPinned(n.pinned);
+    setIsModalOpen(true);
+  };
+
   const handleSaveNote = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    const newNote: DMNote = {
-      id: `note-${Date.now()}`,
-      title,
-      content,
-      category,
-      pinned,
-    };
+    if (editingNoteId) {
+      onUpdateNotes(
+        notes.map(n =>
+          n.id === editingNoteId
+            ? { ...n, title, content, category, pinned, updated_at: new Date().toISOString() }
+            : n
+        )
+      );
+    } else {
+      const newNote: DMNote = {
+        id: `note-${Date.now()}`,
+        title,
+        content,
+        category,
+        pinned,
+        updated_at: new Date().toISOString(),
+      };
+      onUpdateNotes([...notes, newNote]);
+    }
 
-    onUpdateNotes([...notes, newNote]);
     setIsModalOpen(false);
+    setEditingNoteId(null);
     setTitle('');
     setContent('');
     setCategory('General');
@@ -74,7 +106,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
         </h3>
 
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenAdd}
           className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition flex items-center gap-1"
         >
           <Plus className="w-3.5 h-3.5" /> Nueva Nota
@@ -123,8 +155,15 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
               </h4>
               <div className="flex items-center gap-1">
                 <button
+                  onClick={() => handleOpenEdit(n)}
+                  className="p-1 text-slate-500 hover:text-amber-400 rounded transition"
+                  title="Editar nota"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
                   onClick={() => togglePin(n.id)}
-                  className={`p-1 rounded text-xs ${n.pinned ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}
+                  className={`p-1 rounded text-xs transition ${n.pinned ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}
                   title={n.pinned ? 'Desfijar' : 'Fijar nota'}
                 >
                   <Pin className="w-3.5 h-3.5" />
@@ -156,7 +195,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
-              Nueva Nota de Campaña
+              {editingNoteId ? 'Editar Nota de Campaña' : 'Nueva Nota de Campaña'}
             </h3>
 
             <form onSubmit={handleSaveNote} className="space-y-3">
@@ -222,7 +261,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
                   type="submit"
                   className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition"
                 >
-                  Guardar Nota
+                  {editingNoteId ? 'Actualizar Nota' : 'Guardar Nota'}
                 </button>
               </div>
             </form>

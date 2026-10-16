@@ -846,11 +846,17 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                         </div>
                       </div>
 
-                      {/* Progress Bar */}
-                      <div className="w-full bg-dungeon-950 h-2 rounded-full overflow-hidden border border-dungeon-800">
+                      {/* Progress Bar con códigos de color de alto contraste (verde > 50%, amarillo 25-50%, rojo < 25%) */}
+                      <div className="w-full bg-dungeon-950 h-2.5 rounded-full overflow-hidden border border-dungeon-800 relative">
                         <motion.div
-                          className={`h-full ${
-                            hpPercent > 50 ? 'bg-emerald-500' : hpPercent > 20 ? 'bg-amber-500' : 'bg-red-600'
+                          className={`h-full transition-colors ${
+                            hpPercent > 50
+                              ? 'bg-emerald-500'
+                              : hpPercent >= 25
+                                ? 'bg-amber-400'
+                                : hpPercent > 0
+                                  ? 'bg-red-500'
+                                  : 'bg-slate-700'
                           }`}
                           initial={false}
                           animate={{ width: `${hpPercent}%` }}
