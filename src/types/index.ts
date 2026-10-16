@@ -79,6 +79,8 @@ export interface Combatant {
   initiative: number;
   hp_current: number;
   hp_max: number;
+  /** Puntos de golpe temporales según las reglas de D&D 5e */
+  hp_temp?: number;
   ac: number;
   is_player: boolean;
   conditions: string[];

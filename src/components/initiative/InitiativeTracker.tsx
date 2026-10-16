@@ -70,6 +70,11 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   const [floaters, setFloaters] = useState<Record<string, { amount: number; key: number }>>({});
   const floaterTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // Modal de daño/curación/vida temporal personalizado
+  const [hpModalCombatant, setHpModalCombatant] = useState<Combatant | null>(null);
+  const [hpModalAmount, setHpModalAmount] = useState<string>('');
+  const [hpModalTab, setHpModalTab] = useState<'damage' | 'heal' | 'temp'>('damage');
+
   const sortCombatants = (list: Combatant[]) => {
     return [...list].sort((a, b) => b.initiative - a.initiative);
   };
@@ -111,8 +116,8 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
   // Estado actual para el canal: se lee desde una ref para no reconectar
   // el canal cada vez que cambia un PV.
-  const shareSourceRef = useRef({ combatants, round, currentTurnIndex, hideEnemyHp });
-  shareSourceRef.current = { combatants, round, currentTurnIndex, hideEnemyHp };
+  const shareSourceRef = useRef({ combatants, round, turnIndex: currentTurnIndex, hideEnemyHp });
+  shareSourceRef.current = { combatants, round, turnIndex: currentTurnIndex, hideEnemyHp };
 
   useEffect(() => {
     if (!shareToken || !isCloudConfigured()) return;
@@ -390,6 +395,70 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
         return next;
       });
     }, 900);
+  };
+
+  const handleApplyCustomHp = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!hpModalCombatant) return;
+    const val = parseInt(hpModalAmount, 10);
+    if (isNaN(val) || val <= 0) return;
+
+    const target = combatants.find(c => c.id === hpModalCombatant.id);
+    if (!target) return;
+
+    let nextCurrent = target.hp_current;
+    let nextTemp = target.hp_temp || 0;
+    let netChange = 0;
+
+    if (hpModalTab === 'damage') {
+      let remainingDamage = val;
+      // D&D 5e: el daño se descuenta primero de los PV temporales
+      if (nextTemp > 0) {
+        if (remainingDamage >= nextTemp) {
+          remainingDamage -= nextTemp;
+          nextTemp = 0;
+        } else {
+          nextTemp -= remainingDamage;
+          remainingDamage = 0;
+        }
+      }
+      if (remainingDamage > 0) {
+        const prevHp = nextCurrent;
+        nextCurrent = Math.max(0, nextCurrent - remainingDamage);
+        netChange = nextCurrent - prevHp;
+      }
+      if (netChange === 0 && val > 0) {
+        netChange = -val; // Mostramos el daño absorbido o aplicado
+      }
+    } else if (hpModalTab === 'heal') {
+      const prevHp = nextCurrent;
+      nextCurrent = Math.min(target.hp_max, nextCurrent + val);
+      netChange = nextCurrent - prevHp;
+    } else if (hpModalTab === 'temp') {
+      // D&D 5e: los PV temporales no se acumulan, se reemplazan si el nuevo valor es mayor o deseado
+      nextTemp = val;
+      netChange = val;
+    }
+
+    onUpdateCombatants(
+      combatants.map(c =>
+        c.id === target.id ? { ...c, hp_current: nextCurrent, hp_temp: nextTemp } : c
+      )
+    );
+
+    const key = Date.now();
+    setFloaters(prev => ({ ...prev, [target.id]: { amount: hpModalTab === 'damage' ? -Math.abs(val) : netChange, key } }));
+    clearTimeout(floaterTimers.current[target.id]);
+    floaterTimers.current[target.id] = setTimeout(() => {
+      setFloaters(prev => {
+        const next = { ...prev };
+        delete next[target.id];
+        return next;
+      });
+    }, 900);
+
+    setHpModalCombatant(null);
+    setHpModalAmount('');
   };
 
   const handleToggleCondition = (combatantId: string, condition: string) => {
@@ -731,22 +800,50 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                     {/* HP Controls */}
                     <div className="relative flex flex-col items-center gap-1 min-w-[170px] flex-1 max-w-xs">
                       <div className="flex items-center justify-between w-full text-xs font-semibold text-slate-300">
-                        <span className="flex items-center gap-1 text-red-400">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHpModalCombatant(c);
+                            setHpModalTab('damage');
+                            setHpModalAmount('');
+                          }}
+                          className="flex items-center gap-1 text-red-400 hover:text-red-300 hover:underline transition"
+                          title="Hacer clic para abrir la calculadora de daño/curación"
+                        >
                           <Heart className="w-3.5 h-3.5 fill-red-400/20" /> HP:
-                        </span>
-                        <span className="flex items-center overflow-hidden">
-                          <AnimatePresence mode="popLayout" initial={false}>
-                            <motion.span
-                              key={c.hp_current}
-                              initial={{ y: -10, opacity: 0 }}
-                              animate={{ y: 0, opacity: 1 }}
-                              exit={{ y: 10, opacity: 0 }}
-                              transition={{ duration: 0.16 }}
+                        </button>
+                        <div className="flex items-center gap-1.5">
+                          {c.hp_temp && c.hp_temp > 0 ? (
+                            <span
+                              className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1.5 py-0.5 rounded font-mono font-bold"
+                              title="Puntos de golpe temporales"
                             >
-                              {c.hp_current} / {c.hp_max}
-                            </motion.span>
-                          </AnimatePresence>
-                        </span>
+                              +{c.hp_temp} temp
+                            </span>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHpModalCombatant(c);
+                              setHpModalTab('damage');
+                              setHpModalAmount('');
+                            }}
+                            className="flex items-center overflow-hidden hover:text-amber-300 font-mono"
+                            title="Haz clic para modificar daño/curación"
+                          >
+                            <AnimatePresence mode="popLayout" initial={false}>
+                              <motion.span
+                                key={`${c.hp_current}-${c.hp_temp || 0}`}
+                                initial={{ y: -10, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 10, opacity: 0 }}
+                                transition={{ duration: 0.16 }}
+                              >
+                                {c.hp_current} / {c.hp_max}
+                              </motion.span>
+                            </AnimatePresence>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Progress Bar */}
@@ -761,35 +858,48 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                         />
                       </div>
 
-                      {/* Quick HP Adjustment Buttons (área táctil >= 44px en móvil) */}
-                      <div className="flex items-center gap-1.5 mt-1">
+                      {/* Quick HP Adjustment Buttons (área táctil >= 44px en móvil) + botón para daño personalizado */}
+                      <div className="flex items-center gap-1 mt-1">
                         <button
                           onClick={() => handleHpChange(c.id, -5)}
                           aria-label={`Restar 5 PV a ${c.name}`}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 rounded border border-red-500/20 min-w-[46px] min-h-[44px] sm:min-h-[38px] sm:min-w-[40px]"
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-2 rounded border border-red-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           -5
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, -1)}
                           aria-label={`Restar 1 PV a ${c.name}`}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-3 rounded border border-red-500/20 min-w-[46px] min-h-[44px] sm:min-h-[38px] sm:min-w-[40px]"
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-2 rounded border border-red-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           -1
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, 1)}
                           aria-label={`Sumar 1 PV a ${c.name}`}
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 rounded border border-emerald-500/20 min-w-[46px] min-h-[44px] sm:min-h-[38px] sm:min-w-[40px]"
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2 rounded border border-emerald-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           +1
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, 5)}
                           aria-label={`Sumar 5 PV a ${c.name}`}
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 rounded border border-emerald-500/20 min-w-[46px] min-h-[44px] sm:min-h-[38px] sm:min-w-[40px]"
+                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2 rounded border border-emerald-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           +5
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHpModalCombatant(c);
+                            setHpModalTab('damage');
+                            setHpModalAmount('');
+                          }}
+                          aria-label={`Abrir cálculo personalizado de daño para ${c.name}`}
+                          title="Daño / Curación / Temp exacto"
+                          className="bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 text-xs font-black px-2 rounded border border-amber-500/30 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
+                        >
+                          ±
                         </button>
                       </div>
 
@@ -1078,6 +1188,141 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal de Daño / Curación / PV Temporales */}
+      {hpModalCombatant && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-dungeon-900 border border-amber-500/30 rounded-xl max-w-sm w-full p-5 space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-dungeon-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                  <Heart className="w-4 h-4 text-red-400" />
+                  {hpModalCombatant.name}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Actual: <strong className="text-slate-200">{hpModalCombatant.hp_current}</strong> / {hpModalCombatant.hp_max} PV
+                  {hpModalCombatant.hp_temp ? (
+                    <span className="text-sky-300 ml-1.5">(+{hpModalCombatant.hp_temp} temp)</span>
+                  ) : null}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setHpModalCombatant(null)}
+                className="text-slate-400 hover:text-slate-200 text-lg p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Selector de modo */}
+            <div className="grid grid-cols-3 gap-1 bg-dungeon-950 p-1 rounded-lg border border-dungeon-800 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setHpModalTab('damage')}
+                className={`py-1.5 rounded transition ${
+                  hpModalTab === 'damage'
+                    ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                ⚔️ Daño
+              </button>
+              <button
+                type="button"
+                onClick={() => setHpModalTab('heal')}
+                className={`py-1.5 rounded transition ${
+                  hpModalTab === 'heal'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                ✨ Curar
+              </button>
+              <button
+                type="button"
+                onClick={() => setHpModalTab('temp')}
+                className={`py-1.5 rounded transition ${
+                  hpModalTab === 'temp'
+                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                🛡️ Temp HP
+              </button>
+            </div>
+
+            <form onSubmit={handleApplyCustomHp} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  {hpModalTab === 'damage' && 'Cantidad de Daño recibido:'}
+                  {hpModalTab === 'heal' && 'Puntos de Curación a restaurar:'}
+                  {hpModalTab === 'temp' && 'Puntos de Golpe Temporales:'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    autoFocus
+                    placeholder="Ej. 12"
+                    value={hpModalAmount}
+                    onChange={e => setHpModalAmount(e.target.value)}
+                    className="w-full bg-dungeon-950 border border-dungeon-750 focus:border-amber-500 rounded-lg px-3 py-2 text-lg font-mono text-slate-100 focus:outline-none"
+                  />
+                </div>
+                {hpModalTab === 'damage' && hpModalCombatant.hp_temp ? (
+                  <p className="text-[11px] text-sky-400/90 mt-1">
+                    ℹ️ Los primeros {hpModalCombatant.hp_temp} de daño se absorberán con los PV temporales.
+                  </p>
+                ) : null}
+              </div>
+
+              {/* Botones rápidos numéricos */}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[5, 10, 15, 20].map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setHpModalAmount(String(n))}
+                    className="bg-dungeon-950 hover:bg-dungeon-800 border border-dungeon-800 text-xs text-slate-300 font-semibold py-1.5 rounded transition"
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-dungeon-800">
+                <button
+                  type="button"
+                  onClick={() => setHpModalCombatant(null)}
+                  className="flex-1 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 text-xs font-semibold py-2 rounded-lg transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!hpModalAmount || parseInt(hpModalAmount, 10) <= 0}
+                  className={`flex-1 text-xs font-bold py-2 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                    hpModalTab === 'damage'
+                      ? 'bg-red-600 hover:bg-red-500 text-white'
+                      : hpModalTab === 'heal'
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                        : 'bg-sky-600 hover:bg-sky-500 text-white'
+                  }`}
+                >
+                  {hpModalTab === 'damage' && 'Aplicar Daño'}
+                  {hpModalTab === 'heal' && 'Aplicar Curación'}
+                  {hpModalTab === 'temp' && 'Fijar PV Temp'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
         </div>
       )}
     </div>

@@ -306,11 +306,18 @@ export default function PlayerCombatView() {
                             style={{ width: `${hpPercent}%` }}
                           />
                         </div>
-                        <span className="text-[11px] font-semibold text-slate-300 tabular-nums w-16 text-right">
-                          {c.hp_current === null
-                            ? `${c.hp_max} máx.`
-                            : `${c.hp_current} / ${c.hp_max}`}
-                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {c.hp_temp && c.hp_temp > 0 ? (
+                            <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1 py-0.2 rounded font-mono font-bold">
+                              +{c.hp_temp}
+                            </span>
+                          ) : null}
+                          <span className="text-[11px] font-semibold text-slate-300 tabular-nums text-right">
+                            {c.hp_current === null
+                              ? `${c.hp_max} máx.`
+                              : `${c.hp_current} / ${c.hp_max}`}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -35,6 +35,7 @@ export interface PlayerCombatant {
   hp_max: number;
   /** `null` cuando el DM oculta la vida exacta de los enemigos. */
   hp_current: number | null;
+  hp_temp?: number;
   ac: number;
   is_player: boolean;
   conditions: string[];
@@ -97,6 +98,7 @@ export function sanitizeCombatState(source: ShareSource): SharedCombatState {
       initiative: c.initiative,
       hp_max: c.hp_max,
       hp_current: source.hideEnemyHp && !c.is_player ? null : c.hp_current,
+      hp_temp: source.hideEnemyHp && !c.is_player ? undefined : (c.hp_temp || 0),
       ac: c.ac,
       is_player: c.is_player,
       conditions: c.conditions,
