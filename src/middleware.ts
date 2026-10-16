@@ -14,7 +14,6 @@ const isProd = process.env.NODE_ENV === 'production';
 
 // Rutas accesibles sin sesión.
 const PUBLIC_PATHS = [
-  '/',
   '/login',
   '/favicon.ico',
   '/manifest.webmanifest',

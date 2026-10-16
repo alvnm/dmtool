@@ -16,13 +16,25 @@ export function readStorage<T>(key: string, fallback: T): T {
   }
 }
 
+export const STORAGE_ERROR_EVENT = 'dm-companion:storage-error';
+
 export function writeStorage(key: string, value: unknown): boolean {
   if (typeof window === 'undefined') return false;
   try {
     window.localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
     return true;
-  } catch {
-    // Cuota excedida o almacenamiento bloqueado: la app sigue funcionando en memoria.
+  } catch (err) {
+    // Cuota excedida o almacenamiento bloqueado: emitimos un evento para advertir al DM
+    if (typeof window !== 'undefined' && 'dispatchEvent' in window) {
+      window.dispatchEvent(
+        new CustomEvent(STORAGE_ERROR_EVENT, {
+          detail: {
+            key,
+            message: 'No se pudo guardar en almacenamiento local (posible cuota excedida o modo privado). Se recomienda descargar un respaldo JSON de la campaña.',
+          },
+        })
+      );
+    }
     return false;
   }
 }

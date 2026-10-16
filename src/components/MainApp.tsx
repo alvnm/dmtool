@@ -8,7 +8,7 @@ import {
   UserCheck, Gift, Settings, Search, Maximize2, Minimize2, Download
 } from 'lucide-react';
 import { supabase, getSupabase, isSupabaseConfigured, isCloudConfigured } from '@/lib/supabase/client';
-import { usePersistentState, readStorage, writeStorage } from '@/lib/usePersistentState';
+import { usePersistentState, readStorage, writeStorage, STORAGE_ERROR_EVENT } from '@/lib/usePersistentState';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Toolbox } from '@/components/tools/Toolbox';
 import { loadBestiary, loadGrimoire, mergeById } from '@/lib/compendium';
@@ -36,6 +36,9 @@ export default function MainApp() {
   const [supabaseActive, setSupabaseActive] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [storageAlert, setStorageAlert] = useState<string | null>(null);
 
   // UI state
   const [focusMode, setFocusMode] = usePersistentState<boolean>('focus-mode', false);
@@ -53,6 +56,16 @@ export default function MainApp() {
   const [spells, setSpells] = useState<Spell[]>(INITIAL_SPELLS);
   const [notes, setNotes] = usePersistentState<DMNote[]>('notes', INITIAL_NOTES);
   const [party, setParty] = usePersistentState<PartyMember[]>('party', []);
+
+  // Escuchar errores de cuota de localStorage
+  useEffect(() => {
+    const handleStorageError = (e: Event) => {
+      const custom = e as CustomEvent<{ message: string }>;
+      setStorageAlert(custom.detail?.message || 'Espacio local agotado. Descarga un respaldo JSON.');
+    };
+    window.addEventListener(STORAGE_ERROR_EVENT, handleStorageError);
+    return () => window.removeEventListener(STORAGE_ERROR_EVENT, handleStorageError);
+  }, []);
 
   // Bestiario + grimorio SRD (data/compendium) como base local de la app.
   const loadCompendium = useCallback(async () => {
@@ -354,6 +367,31 @@ export default function MainApp() {
 
               <ThemeToggle />
 
+              {/* Estado de sincronización en la nube */}
+              {supabaseActive && (
+                <div
+                  className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium border transition ${
+                    syncStatus === 'saving'
+                      ? 'bg-amber-950/60 text-amber-300 border-amber-800 animate-pulse'
+                      : syncStatus === 'error'
+                        ? 'bg-red-950/60 text-red-300 border-red-800'
+                        : 'bg-emerald-950 text-emerald-300 border-emerald-800/80'
+                  }`}
+                  title={
+                    syncStatus === 'saving'
+                      ? 'Guardando cambios en Supabase...'
+                      : syncStatus === 'error'
+                        ? `Error de sincronización: ${syncError || 'Error de red'}`
+                        : 'Todos los cambios están sincronizados con la nube'
+                  }
+                >
+                  <span className={`w-2 h-2 rounded-full ${syncStatus === 'saving' ? 'bg-amber-400' : syncStatus === 'error' ? 'bg-red-400' : 'bg-emerald-400'}`} />
+                  <span className="hidden sm:inline">
+                    {syncStatus === 'saving' ? 'Guardando…' : syncStatus === 'error' ? 'Error sync' : 'Sincronizado'}
+                  </span>
+                </div>
+              )}
+
               {/* Estado del almacenamiento + acceso a ajustes */}
               <button
                 onClick={() => setSettingsOpen(true)}
@@ -427,6 +465,27 @@ export default function MainApp() {
           focusMode ? 'max-w-none p-2 sm:p-3' : 'max-w-7xl p-4 sm:p-6 lg:p-8'
         }`}
       >
+        {/* Aviso de error de cuota / almacenamiento local */}
+        {storageAlert && (
+          <div className="mb-4 bg-amber-500/15 border border-amber-500/40 text-amber-200 px-4 py-3 rounded-xl flex items-center justify-between text-xs gap-3">
+            <span>⚠️ {storageAlert}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCampaign}
+                className="bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs hover:bg-amber-400 transition"
+              >
+                Descargar Respaldo JSON
+              </button>
+              <button
+                onClick={() => setStorageAlert(null)}
+                className="text-amber-400 hover:text-amber-200 font-bold px-2 py-1"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Transición suave al cambiar de sección */}
         <AnimatePresence mode="wait" initial={false}>
         <motion.div

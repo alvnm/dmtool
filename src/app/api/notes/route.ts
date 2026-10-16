@@ -16,7 +16,7 @@ export const runtime = 'nodejs';
 const MAX_PAGE_SIZE = 200;
 const DEFAULT_PAGE_SIZE = 50;
 
-const CATEGORIES = ['General', 'Historia', 'Pistas', 'Regalos', 'Combate', 'NPCs'] as const;
+const CATEGORIES = ['General', 'Lore', 'Misión', 'Sesión', 'Combate', 'NPCs'] as const;
 
 async function requireUser() {
   const supabase = createSupabaseServerClient();

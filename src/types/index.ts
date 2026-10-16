@@ -95,11 +95,14 @@ export interface Combatant {
   created_at?: string;
 }
 
+export type NoteCategory = 'General' | 'Lore' | 'Misión' | 'Sesión' | 'Combate' | 'NPCs';
+
 export interface DMNote {
   id: string;
   title: string;
   content: string;
-  category: 'General' | 'Lore' | 'Misión' | 'Sesión';
+  category: NoteCategory;
   pinned: boolean;
+  campaign_id?: string;
   updated_at?: string;
 }

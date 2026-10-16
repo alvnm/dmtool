@@ -26,7 +26,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
 
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
 
-  const CATEGORIES = ['Todas', 'General', 'Lore', 'Misión', 'Sesión'];
+  const CATEGORIES = ['Todas', 'General', 'Lore', 'Misión', 'Sesión', 'Combate', 'NPCs'];
 
   const filteredNotes = notes.filter(n => 
     selectedCategory === 'Todas' || n.category === selectedCategory
