@@ -21,6 +21,9 @@ const PUBLIC_PATHS = [
   '/sw.js',
   '/robots.txt',
   '/sitemap.xml',
+  // Vista de combate en vivo para jugadores: sin sesión (llegan por un
+  // enlace compartido con token de canal Realtime en la query string).
+  '/combat',
 ];
 const PUBLIC_API = ['/api/auth/login', '/api/health'];
 // Única ruta que admite subida de archivos (con lista blanca en /api/uploads).

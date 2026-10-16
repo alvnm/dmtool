@@ -5,9 +5,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Combatant, Monster, NPC } from '@/types';
 import { 
   Swords, Plus, Trash2, Shield, Heart, ArrowRight, 
-  RotateCcw, Sparkles, UserCheck, Skull, Dices, Timer, Maximize2, Minimize2
+  RotateCcw, Sparkles, UserCheck, Skull, Dices, Timer, Maximize2, Minimize2,
+  Share2, Link2, Copy, Eye, EyeOff, Radio, Check
 } from 'lucide-react';
 import { usePersistentState } from '@/lib/usePersistentState';
+import { AVAILABLE_CONDITIONS, CONDITION_ICONS } from '@/lib/conditions';
+import {
+  getOrCreateShareToken,
+  buildShareUrl,
+  openCombatChannel,
+  broadcastCombatState,
+  COMBAT_SYNC_EVENT,
+  isSharedCombatState,
+} from '@/lib/combatShare';
+import { getSupabase, isCloudConfigured } from '@/lib/supabase/client';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface InitiativeTrackerProps {
   combatants: Combatant[];
@@ -15,33 +27,6 @@ interface InitiativeTrackerProps {
   npcs: NPC[];
   onUpdateCombatants: (combatants: Combatant[]) => void;
 }
-
-const AVAILABLE_CONDITIONS = [
-  'Cegado', 'Encantado', 'Ensordecido', 'Asustado', 
-  'Agarrado', 'Incapacitado', 'Invisible', 'Paralizado', 
-  'Petrificado', 'Envenenado', 'Derribado', 'Apresado', 
-  'Aturdido', 'Inconsciente', 'Concentración', 'Agotado'
-];
-
-/** Icono rápido por condición para leer el estado de un vistazo. */
-const CONDITION_ICONS: Record<string, string> = {
-  Envenenado: '☠️',
-  Ciego: '🙈',
-  Paralizado: '⛓️',
-  'Concentración': '🎯',
-  Agotado: '😩',
-  Invisible: '👻',
-  Aturdido: '💫',
-  Inconsciente: '💤',
-  Asustado: '😨',
-  Agarrado: '🪢',
-  Incapacitado: '🚫',
-  Encantado: '💘',
-  Ensordecido: '🙉',
-  Petrificado: '🗿',
-  Derribado: '🩸',
-  Apresado: '🔒',
-};
 
 // Duraciones por defecto (en rondas) que el DM puede ciclar con un clic.
 const DURATION_CYCLE: Array<number | null> = [3, 1, 2, 4, 5, 10, null];
@@ -61,6 +46,15 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Vista de jugadores en vivo (Supabase Realtime Broadcast).
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<'off' | 'connecting' | 'live' | 'error'>('off');
+  const [hideEnemyHp, setHideEnemyHp] = usePersistentState<boolean>('share-hide-enemy-hp', true);
+  const [viewerCount, setViewerCount] = useState(0);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Custom new combatant form state
   const [newName, setNewName] = useState('');
@@ -107,6 +101,96 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
+
+  useEffect(() => {
+    const timer = copyTimer.current;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  // Estado actual para el canal: se lee desde una ref para no reconectar
+  // el canal cada vez que cambia un PV.
+  const shareSourceRef = useRef({ combatants, round, currentTurnIndex, hideEnemyHp });
+  shareSourceRef.current = { combatants, round, currentTurnIndex, hideEnemyHp };
+
+  useEffect(() => {
+    if (!shareToken || !isCloudConfigured()) return;
+    let cancelled = false;
+    const client = getSupabase();
+    const channel = openCombatChannel(client, shareToken);
+    channelRef.current = channel;
+
+    channel
+      .on('broadcast', { event: COMBAT_SYNC_EVENT }, () => {
+        // Un jugador (re)conecta: se le manda el estado actual al instante.
+        broadcastCombatState(channel, shareSourceRef.current);
+      })
+      .on('presence', { event: 'sync' }, () => {
+        if (!cancelled) setViewerCount(Object.keys(channel.presenceState()).length);
+      })
+      .subscribe(status => {
+        if (cancelled) return;
+        if (status === 'SUBSCRIBED') {
+          setShareStatus('live');
+          broadcastCombatState(channel, shareSourceRef.current);
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setShareStatus('error');
+        } else if (status === 'CLOSED') {
+          setShareStatus('off');
+          setViewerCount(0);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      channelRef.current = null;
+      setViewerCount(0);
+      client.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareToken]);
+
+  // Publicar cambios del combate (debounce para no saturar los toques rápidos de HP).
+  useEffect(() => {
+    if (shareStatus !== 'live') return;
+    const t = setTimeout(() => broadcastCombatState(channelRef.current, shareSourceRef.current), 150);
+    return () => clearTimeout(t);
+  }, [combatants, round, currentTurnIndex, hideEnemyHp, shareStatus]);
+
+  const handleToggleShare = () => {
+    if (shareToken) {
+      // Cerrar la sesión de compartición.
+      const client = getSupabase();
+      if (channelRef.current) client.removeChannel(channelRef.current);
+      channelRef.current = null;
+      setShareToken(null);
+      setShareStatus('off');
+      setViewerCount(0);
+      return;
+    }
+    if (!isCloudConfigured()) {
+      setNotice({
+        id: Date.now(),
+        text: '⚠️ Conecta Supabase en Ajustes para compartir el combate en vivo.',
+      });
+      return;
+    }
+    setShareStatus('connecting');
+    setShareToken(getOrCreateShareToken());
+  };
+
+  const handleCopyShareLink = async () => {
+    if (!shareToken) return;
+    try {
+      await navigator.clipboard.writeText(buildShareUrl(shareToken));
+      setCopiedLink(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopiedLink(false), 1600);
+    } catch {
+      // Clipboard bloqueado: el enlace queda visible para copiarlo a mano.
+    }
+  };
 
   /**
    * Avanzar de turno con Espacio/Enter (atajo pedido por el DM para no
@@ -425,6 +509,24 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
           </button>
 
           <button
+            onClick={handleToggleShare}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm border transition ${
+              shareStatus === 'live'
+                ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 border-dungeon-700'
+            }`}
+            title="Compartir el combate en vivo con los jugadores (vista de solo lectura en su móvil)"
+          >
+            <Share2 className="w-4 h-4" />
+            {shareStatus === 'live' ? (
+              <span className="hidden sm:inline">Compartiendo{viewerCount > 0 ? ` (${viewerCount})` : ''}</span>
+            ) : (
+              <span className="hidden sm:inline">Compartir</span>
+            )}
+            <span className="sm:hidden">{shareStatus === 'live' ? 'En vivo' : 'Compartir'}</span>
+          </button>
+
+          <button
             onClick={toggleFullscreen}
             className="flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 rounded-lg text-sm border border-dungeon-700 transition"
             title="Ver el combate a pantalla completa (ideal para tablets del DM)"
@@ -436,6 +538,68 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Panel de vista de jugadores en vivo */}
+      {shareToken && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-dungeon-900 border border-emerald-500/30 rounded-xl p-4 space-y-3"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Radio className={`w-4 h-4 ${shareStatus === 'live' ? 'text-emerald-400 animate-pulse' : shareStatus === 'error' ? 'text-red-400' : 'text-amber-400'}`} />
+              <h3 className="text-sm font-bold text-slate-100">Vista de jugadores en vivo</h3>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
+                shareStatus === 'live'
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                  : shareStatus === 'error'
+                    ? 'bg-red-500/15 text-red-300 border-red-500/40'
+                    : 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+              }`}>
+                {shareStatus === 'live'
+                  ? `En vivo${viewerCount > 0 ? ` · ${viewerCount} conectado${viewerCount === 1 ? '' : 's'}` : ''}`
+                  : shareStatus === 'error' ? 'Sin conexión' : 'Conectando…'}
+              </span>
+            </div>
+
+            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={hideEnemyHp}
+                onChange={e => setHideEnemyHp(e.target.checked)}
+                className="accent-emerald-500 w-4 h-4 rounded cursor-pointer"
+              />
+              {hideEnemyHp ? <EyeOff className="w-3.5 h-3.5 text-emerald-400" /> : <Eye className="w-3.5 h-3.5 text-slate-400" />}
+              Ocultar HP exactos de enemigos
+            </label>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex items-center gap-2 flex-1 bg-dungeon-950 border border-dungeon-800 rounded-lg px-3 py-2 min-w-0">
+              <Link2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+              <input
+                readOnly
+                value={buildShareUrl(shareToken)}
+                onFocus={e => e.currentTarget.select()}
+                aria-label="Enlace de vista de jugadores"
+                className="flex-1 min-w-0 bg-transparent text-xs text-slate-300 font-mono focus:outline-none"
+              />
+            </div>
+            <button
+              onClick={handleCopyShareLink}
+              className="flex items-center justify-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 text-xs font-semibold px-3 py-2 rounded-lg transition shrink-0 min-h-[40px]"
+            >
+              {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copiedLink ? 'Copiado' : 'Copiar enlace'}
+            </button>
+          </div>
+
+          <p className="text-[11px] text-slate-500">
+            Los jugadores abren el enlace en su móvil y ven la iniciativa, el turno, las condiciones y las barras de vida en tiempo real. No pueden editar nada.
+          </p>
+        </motion.div>
+      )}
 
       {/* Aviso de temporizadores / tiradas */}
       <AnimatePresence>
@@ -491,7 +655,9 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   className={`relative rounded-xl border transition-all duration-200 overflow-hidden ${
                     isActive
                       ? 'bg-dungeon-850 border-amber-500/80 ring-1 ring-amber-500/50 shadow-xl'
-                      : 'bg-dungeon-900 border-dungeon-800 hover:border-dungeon-700'
+                      : c.is_player
+                        ? 'bg-dungeon-900 border-blue-500/35 hover:border-blue-400/60'
+                        : 'bg-dungeon-900 border-red-500/35 hover:border-red-400/60'
                   }`}
                 >
                   {/* Turn indicator bar: se desliza de una fila a otra */}
