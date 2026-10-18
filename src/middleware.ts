@@ -98,11 +98,15 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // --- 4. Rate limit de login --------------------------------------------
-  if (pathname === '/api/auth/login' && req.method === 'POST') {
+  // --- 4. Rate limit de autenticación (login y registro) ------------------
+  const authPost =
+    req.method === 'POST' && (pathname === '/api/auth/login' || pathname === '/api/auth/signup');
+  if (authPost) {
     const policy = loginPolicy();
     const ip = clientIp(req);
-    const result = consume(`login:${ip}`, policy);
+    // Bucket separado por ruta: los registros no consumen los intentos de login.
+    const bucket = pathname === '/api/auth/signup' ? 'signup' : 'login';
+    const result = consume(`${bucket}:${ip}`, policy);
     if (!result.allowed) {
       return securityHeaders(
         NextResponse.json(

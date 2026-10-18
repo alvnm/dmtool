@@ -56,10 +56,11 @@ const nextConfig = {
 };
 
 // En producción se puede fijar el origen de allowedOrigins con NEXT_PUBLIC_APP_URL.
+// Nota: allowedOrigins espera HOST[puerto] sin el esquema (https://).
 if (process.env.NEXT_PUBLIC_APP_URL) {
   try {
-    const origin = new URL(process.env.NEXT_PUBLIC_APP_URL).origin;
-    nextConfig.experimental.serverActions.allowedOrigins = [origin.replace(/^http/, 'http')];
+    const host = new URL(process.env.NEXT_PUBLIC_APP_URL).host;
+    nextConfig.experimental.serverActions.allowedOrigins = [host];
   } catch {
     // URL inválida: mantenemos el origen por defecto.
   }

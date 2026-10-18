@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Monster, Combatant } from '@/types';
+import { Monster } from '@/types';
+import { formatMod } from '@/lib/combat';
 import { 
   Skull, Plus, Search, Shield, Heart, Zap, 
-  Swords, Sparkles, Trash2, Edit2, Eye
+  Swords, Trash2
 } from 'lucide-react';
 
 interface MonsterCompendiumProps {
@@ -46,11 +47,6 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
   const [actionsList, setActionsList] = useState<{ name: string; desc: string }[]>([]);
 
   const CR_OPTIONS = ['Todos', '1/8', '1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
-
-  const getMod = (score: number) => {
-    const mod = Math.floor((score - 10) / 2);
-    return mod >= 0 ? `+${mod}` : `${mod}`;
-  };
 
   const filteredMonsters = monsters.filter(m => {
     const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -214,12 +210,28 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                   <div key={statKey}>
                     <span className="text-[9px] uppercase font-bold text-amber-500/80">{statKey}</span>
                     <p className="text-xs font-bold text-slate-200">{val}</p>
-                    <span className="text-[10px] text-slate-400">{getMod(val)}</span>
+                    <span className="text-[10px] text-slate-400">{formatMod(val)}</span>
                   </div>
                 ))}
               </div>
 
               {/* Actions Preview */}
+              <div className="space-y-2 mt-3 text-xs text-slate-300">
+                <h4 className="font-bold text-amber-400/90 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+                  Rasgos
+                </h4>
+                {m.traits.length > 0 ? (
+                  m.traits.map((trait, idx) => (
+                    <div key={idx} className="leading-snug">
+                      <span className="font-bold text-slate-100 italic">{trait.name}. </span>
+                      <span className="text-slate-400">{trait.desc}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-slate-500 italic">Sin rasgos especiales.</p>
+                )}
+              </div>
+
               <div className="space-y-2 mt-3 text-xs text-slate-300">
                 <h4 className="font-bold text-amber-400/90 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
                   Acciones

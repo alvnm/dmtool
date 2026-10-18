@@ -11,7 +11,7 @@
  */
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseServerClient, serverSupabaseConfigured } from '@/lib/supabase/server';
-import { consume, loginPolicy } from '@/lib/security/rateLimit';
+import { consume, loginPolicy, reset } from '@/lib/security/rateLimit';
 import { invalid, isEmail, isPlainObject, isText } from '@/lib/security/validate';
 import { sanitizeText } from '@/lib/security/sanitize';
 
@@ -88,6 +88,9 @@ export async function POST(req: NextRequest) {
   if (error || !data.session) {
     return genericFailure(401);
   }
+
+  // Un login válido limpia el contador de intentos de ese email.
+  reset(`login-email:${email}`);
 
   const res = NextResponse.json({
     ok: true,

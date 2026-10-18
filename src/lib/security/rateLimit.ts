@@ -67,9 +67,9 @@ export function peek(key: string, { limit, windowMs }: { limit: number; windowMs
   return { allowed: true, remaining: limit - bucket.hits.length, retryAfter: 0 };
 }
 
-/** Limpia un contador tras un inicio de sesión válido. */
+/** Limpia un contador tras un inicio de sesión o registro válido. */
 export function reset(key: string) {
-  buckets.delete(key.slice(0, 0 + 200));
+  buckets.delete(key.slice(0, 200));
 }
 
 /** Ventana por defecto de login: 15 min, 5 intentos (configurable por env). */

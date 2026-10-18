@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { NPC } from '@/types';
+import { NPC, NPC_DISPOSITIONS } from '@/types';
 import { 
   Users, Plus, Search, MapPin, Eye, EyeOff, 
   Trash2, Edit2, ShieldAlert, HeartHandshake, UserCheck, Flame
@@ -32,7 +32,8 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
   const [location, setLocation] = useState('');
   const [secretNotes, setSecretNotes] = useState('');
 
-  const DISPOSITIONS = ['Todas', 'Aliado', 'Amigable', 'Neutral', 'Hostil', 'Enemigo'];
+  // Eliltro de la lista se deriva de los valores tipados (no se desincroniza).
+  const DISPOSITIONS = ['Todas', ...NPC_DISPOSITIONS];
 
   const toggleSecret = (id: string) => {
     setRevealedSecrets(prev => ({ ...prev, [id]: !prev[id] }));
@@ -313,10 +314,10 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
                   <label className="block text-xs font-semibold text-slate-400 mb-1">Afecto hacia la Party</label>
                   <select
                     value={disposition}
-                    onChange={e => setDisposition(e.target.value as any)}
+                    onChange={e => setDisposition(e.target.value as NPC['disposition'])}
                     className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
                   >
-                    {DISPOSITIONS.filter(d => d !== 'Todas').map(d => (
+                    {NPC_DISPOSITIONS.map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>

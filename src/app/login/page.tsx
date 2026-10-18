@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { LoginForm } from './LoginForm';
 
 export const metadata: Metadata = {
-  title: 'Iniciar sesión | DM Companion',
+  title: 'Acceso | DM Companion',
   robots: { index: false, follow: false },
 };
 
@@ -15,7 +15,8 @@ export default function LoginPage() {
           DM <span className="text-amber-400">Companion</span>
         </h1>
         <p className="text-xs text-slate-400 mt-1 mb-6">
-          Acceso de Dungeon Masters. Sesión protegida con cookies httpOnly y caducidad corta.
+          Acceso de Dungeon Masters: inicia sesión o crea tu cuenta. Sesión protegida con cookies
+          httpOnly y caducidad corta.
         </p>
         <Suspense fallback={<p className="text-sm text-slate-400">Cargando…</p>}>
           <LoginForm />

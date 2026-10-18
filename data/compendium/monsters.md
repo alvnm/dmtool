@@ -1,6 +1,6 @@
 # Compendio unificado D&D 5e — informe de generación
 
-- Generado: 2026-10-11T03:08:29.999Z
+- Generado: 2026-10-17T22:58:53.597Z
 - Monstruos totales: **386** (B1: 383, B2: 325; en ambos: 322; solo B2: 3)
 - Hechizos: **396** — SRD completo desde vorpalhex/srd_spells (0 trucos, 361 de nivel 1-9; 32 rituales).
 

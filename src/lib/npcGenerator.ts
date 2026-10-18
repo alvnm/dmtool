@@ -5,7 +5,7 @@
  * nombre (coherente con la raza), actitud, oficio y un secreto que el DM puede
  * soltar más adelante para dar profundidad al encuentro.
  */
-import { NPC } from '@/types';
+import { NPC, NPC_DISPOSITIONS } from '@/types';
 import { randomName, type NameCategory } from '@/lib/names';
 
 interface RaceOption {
@@ -46,7 +46,7 @@ const PERSONALITIES = [
   'Cree firmemente en las profecías y las cita a menudo',
 ];
 
-const DISPOSITIONS: NPC['disposition'][] = ['Aliado', 'Amigable', 'Neutral', 'Hostil', 'Enemigo'];
+const DISPOSITIONS: NPC['disposition'][] = [...NPC_DISPOSITIONS];
 
 const SECRETS = [
   'Debe 500 PO al gremio y se esconde de sus cobradores',

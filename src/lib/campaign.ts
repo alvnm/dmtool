@@ -5,7 +5,7 @@
  * la tablet del DM al portátil) sin depender de Supabase. El archivo sólo
  * contiene datos de la campaña: nunca credenciales ni tokens.
  */
-import { Combatant, DMNote, InventoryItem, NPC } from '@/types';
+import { Combatant, DMNote, InventoryItem, Monster, NPC, Spell } from '@/types';
 
 export const CAMPAIGN_FORMAT = 'dm-companion-campaign';
 export const CAMPAIGN_VERSION = 1;
@@ -14,7 +14,9 @@ export const CAMPAIGN_VERSION = 1;
 export const STORAGE_KEYS = {
   combatants: 'combatants',
   items: 'items',
+  monsters: 'monsters',
   npcs: 'npcs',
+  spells: 'spells',
   notes: 'notes',
   party: 'party',
   activeTab: 'active-tab',
@@ -25,7 +27,11 @@ export const STORAGE_KEYS = {
 export interface CampaignData {
   combatants: Combatant[];
   items: InventoryItem[];
+  /** Bestiario completo (SRD + criaturas del DM); opcional en archivos viejos. */
+  monsters?: Monster[];
   npcs: NPC[];
+  /** Grimorio completo (SRD + hechizos del DM); opcional en archivos viejos. */
+  spells?: Spell[];
   notes: DMNote[];
   /** Miembros del grupo (gestor de jugadores); puede no existir en archivos viejos. */
   party?: unknown[];
@@ -87,7 +93,9 @@ export function parseCampaign(raw: string): CampaignData {
   return {
     combatants,
     items,
+    monsters: asArray<Monster>(data.monsters),
     npcs,
+    spells: asArray<Spell>(data.spells),
     notes,
     party: asArray(data.party),
     activeTab: typeof data.activeTab === 'string' ? data.activeTab : undefined,

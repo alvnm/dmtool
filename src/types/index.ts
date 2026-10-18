@@ -48,6 +48,11 @@ export interface Spell {
   created_at?: string;
 }
 
+export type NpcDisposition = 'Aliado' | 'Amigable' | 'Neutral' | 'Hostil' | 'Enemigo';
+
+/** Valores válidos de disposición, en el orden en que se muestran en la UI. */
+export const NPC_DISPOSITIONS = ['Aliado', 'Amigable', 'Neutral', 'Hostil', 'Enemigo'] as const;
+
 export interface NPC {
   id: string;
   name: string;
@@ -55,7 +60,7 @@ export interface NPC {
   alignment: string;
   background?: string;
   personality?: string;
-  disposition: 'Aliado' | 'Amigable' | 'Neutral' | 'Hostil' | 'Enemigo';
+  disposition: NpcDisposition;
   location?: string;
   secret_notes?: string;
   created_at?: string;
@@ -96,6 +101,23 @@ export interface Combatant {
 }
 
 export type NoteCategory = 'General' | 'Lore' | 'Misión' | 'Sesión' | 'Combate' | 'NPCs';
+
+/** Ficha resumen de un personaje jugador (gestor de grupo). */
+export interface PartyMember {
+  id: string;
+  name: string;
+  className: string;
+  level: number;
+  ac: number;
+  maxHp: number;
+  /** Modificador de Sabiduría usado para la percepción pasiva. */
+  wisMod: number;
+  /** Percepción pasiva a mano; si no, se calcula como 10 + mod. Sabiduría. */
+  passivePerception?: number | null;
+  /** Iniciativa reportada por el jugador. */
+  initiative: number;
+  notes?: string;
+}
 
 export interface DMNote {
   id: string;

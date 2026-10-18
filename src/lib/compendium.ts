@@ -53,3 +53,16 @@ export function mergeById<T extends { id: string; name: string }>(base: T[], ext
   }
   return out;
 }
+
+/**
+ * Une dos listas sólo por id, sin de-duplicar por nombre.
+ *
+ * Sirve para datos cuyo nombre puede repetirse legítimamente (combatientes
+ * con el mismo nombre, notas con títulos iguales): con `mergeById` se
+ * perderían filas válidas, así que aquí lo único que importa es la id.
+ */
+export function unionById<T extends { id: string }>(base: T[], extra: T[]): T[] {
+  const ids = new Set(base.map((x) => x.id));
+  const added = extra.filter((x) => !ids.has(x.id));
+  return added.length ? [...base, ...added] : base;
+}

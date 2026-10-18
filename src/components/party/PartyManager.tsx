@@ -3,27 +3,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Shield, Eye, Heart, Swords, Trash2, Edit2, Skull } from 'lucide-react';
-import { Combatant } from '@/types';
+import { Combatant, PartyMember } from '@/types';
 
 /**
  * Ficha resumen del grupo: lo que el DM necesita mirar sin pestañas de más
  * mientras narra (CA, percepción pasiva y HP máximo) + acceso al combate.
  */
-export interface PartyMember {
-  id: string;
-  name: string;
-  className: string;
-  level: number;
-  ac: number;
-  maxHp: number;
-  /** Modificador de Sabiduría usado para la percepción pasiva. */
-  wisMod: number;
-  /** Percepción pasiva a mano; si no, se calcula como 10 + mod. Sabiduría. */
-  passivePerception?: number | null;
-  /** Iniciativa reportada por el jugador. */
-  initiative: number;
-  notes?: string;
-}
+export type { PartyMember };
 
 interface PartyManagerProps {
   members: PartyMember[];

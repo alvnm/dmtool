@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Combatant, Monster, NPC } from '@/types';
+import { rollD20 } from '@/lib/dice';
+import { formatMod, monsterToCombatant, npcToCombatant, sortCombatants } from '@/lib/combat';
 import { 
   Swords, Plus, Trash2, Shield, Heart, ArrowRight, ArrowLeft,
   RotateCcw, Sparkles, UserCheck, Skull, Dices, Timer, Maximize2, Minimize2,
@@ -31,8 +33,6 @@ interface InitiativeTrackerProps {
 // Duraciones por defecto (en rondas) que el DM puede ciclar con un clic.
 const DURATION_CYCLE: Array<number | null> = [3, 1, 2, 4, 5, 10, null];
 const DEFAULT_ROUNDS = 3;
-
-const d20 = () => Math.floor(Math.random() * 20) + 1;
 
 export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   combatants,
@@ -74,10 +74,6 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   const [hpModalCombatant, setHpModalCombatant] = useState<Combatant | null>(null);
   const [hpModalAmount, setHpModalAmount] = useState<string>('');
   const [hpModalTab, setHpModalTab] = useState<'damage' | 'heal' | 'temp'>('damage');
-
-  const sortCombatants = (list: Combatant[]) => {
-    return [...list].sort((a, b) => b.initiative - a.initiative);
-  };
 
   // El turno nunca puede quedar fuera de rango tras borrar combatientes.
   useEffect(() => {
@@ -233,7 +229,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   const handleRollInitiative = () => {
     const rolled = combatants.map(c => {
       if (c.is_player) return c;
-      return { ...c, initiative: d20() + (c.dex_mod ?? 0) };
+      return { ...c, initiative: rollD20(c.dex_mod ?? 0) };
     });
     onUpdateCombatants(sortCombatants(rolled));
     setCurrentTurnIndex(0);
@@ -327,10 +323,8 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
   const handleAddCustom = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
-
-    const newCombatant: Combatant = {
-      id: `comb-${Date.now()}`,
+    if (!newName.trim()) return;      const newCombatant: Combatant = {
+        id: `comb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: newName,
       initiative: Number(newInitiative),
       hp_current: Number(newHp),
@@ -349,37 +343,14 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   };
 
   const handleImportMonster = (monster: Monster) => {
-    const dexMod = Math.floor((monster.stats.dex - 10) / 2);
-    const imported: Combatant = {
-      id: `comb-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-      name: monster.name,
-      initiative: d20() + dexMod,
-      hp_current: monster.hp_max,
-      hp_max: monster.hp_max,
-      ac: monster.ac,
-      is_player: false,
-      conditions: [],
-      condition_rounds: {},
-      dex_mod: dexMod,
-    };
+    const imported = monsterToCombatant(monster);
 
     const updated = sortCombatants([...combatants, imported]);
     onUpdateCombatants(updated);
   };
 
   const handleImportNpc = (npc: NPC) => {
-    const imported: Combatant = {
-      id: `comb-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-      name: npc.name,
-      initiative: d20(),
-      hp_current: 12,
-      hp_max: 12,
-      ac: 12,
-      is_player: false,
-      conditions: [],
-      condition_rounds: {},
-      dex_mod: 0,
-    };
+    const imported = npcToCombatant(npc);
 
     const updated = sortCombatants([...combatants, imported]);
     onUpdateCombatants(updated);
@@ -1166,8 +1137,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                           <span>AC: {m.ac}</span>
                           <span>HP: {m.hp_max}</span>
                           <span className="text-amber-400">
-                            DEST {m.stats.dex} ({Math.floor((m.stats.dex - 10) / 2) >= 0 ? '+' : ''}
-                            {Math.floor((m.stats.dex - 10) / 2)})
+                            DEST {m.stats.dex} ({formatMod(m.stats.dex)})
                           </span>
                         </div>
                       </div>

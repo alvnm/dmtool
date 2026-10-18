@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Swords, Backpack, Skull, 
   Users, BookOpen, Database, Sparkles, LogOut,
   UserCheck, Gift, Settings, Search, Maximize2, Minimize2, Download
 } from 'lucide-react';
-import { supabase, getSupabase, isSupabaseConfigured, isCloudConfigured } from '@/lib/supabase/client';
+import { getSupabase, isCloudConfigured } from '@/lib/supabase/client';
 import { usePersistentState, readStorage, writeStorage, STORAGE_ERROR_EVENT } from '@/lib/usePersistentState';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Toolbox } from '@/components/tools/Toolbox';
@@ -23,22 +23,30 @@ import { InventoryTracker } from '@/components/inventory/InventoryTracker';
 import { MonsterCompendium } from '@/components/monsters/MonsterCompendium';
 import { NpcManager } from '@/components/npcs/NpcManager';
 import { Spellbook } from '@/components/spells/Spellbook';
-import { PartyManager, type PartyMember } from '@/components/party/PartyManager';
+import { PartyManager } from '@/components/party/PartyManager';
 import { TreasureGenerator } from '@/components/treasure/TreasureGenerator';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { CommandPalette, type PaletteTabId } from '@/components/CommandPalette';
 import { buildCampaign, downloadCampaign, STORAGE_KEYS, type CampaignData } from '@/lib/campaign';
 
 export default function MainApp() {
-  // La pestaña activa también se recuerda: si el DM refresca a mitad de combate
-  // vuelve justo donde estaba.
-  const [activeTab, setActiveTab] = usePersistentState<string>('active-tab', 'dashboard');
-  const [supabaseActive, setSupabaseActive] = useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  // Datos + nube: toda la carga/fusión vive en useCampaignData.
+  const {
+    activeTab, setActiveTab,
+    combatants, setCombatants,
+    items, setItems,
+    monsters, setMonsters,
+    npcs, setNpcs,
+    spells, setSpells,
+    notes, setNotes,
+    party, setParty,
+    supabaseActive, userEmail,
+    syncStatus, syncError,
+    storageAlert, dismissStorageAlert,
+    getCampaign, exportCampaign, importCampaign, reloadConnection,
+  } = useCampaignData();
+
   const [loggingOut, setLoggingOut] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [storageAlert, setStorageAlert] = useState<string | null>(null);
 
   // UI state
   const [focusMode, setFocusMode] = usePersistentState<boolean>('focus-mode', false);
@@ -67,75 +75,7 @@ export default function MainApp() {
     return () => window.removeEventListener(STORAGE_ERROR_EVENT, handleStorageError);
   }, []);
 
-  // Bestiario + grimorio SRD (data/compendium) como base local de la app.
-  const loadCompendium = useCallback(async () => {
-    try {
-      const [bestiary, grimoire] = await Promise.all([loadBestiary(), loadGrimoire()]);
-      if (bestiary.length) setMonsters(bestiary);
-      if (grimoire.length) setSpells(grimoire);
-    } catch (err) {
-      // Sin compendio generado la app sigue con los datos de ejemplo.
-      console.warn('Compendio no disponible, se usan datos de ejemplo:', err);
-    }
-  }, []);
-
-  const loadDataFromSupabase = useCallback(async () => {
-    const client = getSupabase();
-    // Los monstruos/hechizos propios se fusionan sobre el compendio SRD
-    // (por id y por nombre) para no ocultar el bestiario con las filas de la BD.
-    const { data: monData } = await client.from('monsters').select('*');
-      if (monData && monData.length > 0) setMonsters(prev => mergeById(prev, monData));
-
-      const { data: spellData } = await client.from('spells').select('*');
-      if (spellData && spellData.length > 0) setSpells(prev => mergeById(prev, spellData));
-
-      const { data: npcData } = await client.from('npcs').select('*');
-      if (npcData && npcData.length > 0) setNpcs(npcData);
-
-      const { data: itemData } = await client.from('items').select('*');
-      if (itemData && itemData.length > 0) setItems(itemData);
-
-      const { data: combData } = await client.from('initiative_combatants').select('*');
-      if (combData && combData.length > 0) setCombatants(combData);
-
-      const { data: noteData } = await client.from('dm_notes').select('*');
-      if (noteData && noteData.length > 0) setNotes(noteData);
-  }, []);
-
-  useEffect(() => {
-    // Nube por variables de entorno O por credenciales pegadas en Ajustes.
-    const configured = isCloudConfigured();
-    setSupabaseActive(configured);
-
-    let cancelled = false;
-    let sub: { subscription: { unsubscribe: () => void } } | undefined;
-
-    if (configured) {
-      const client = getSupabase();
-      // Sesión del usuario (el middleware ya exige login para acceder aquí).
-      client.auth.getUser().then(({ data }) => {
-        if (!cancelled) setUserEmail(data.user?.email ?? null);
-      });
-      sub = client.auth.onAuthStateChange((_event, session) => {
-        if (!cancelled) setUserEmail(session?.user?.email ?? null);
-      }).data;
-    } else if (!cancelled) {
-      setUserEmail(null);
-    }
-
-    // Compendio SRD primero (también en modo local); después, si hay Supabase,
-    // las filas propias del usuario se fusionan encima del bestiario.
-    loadCompendium().then(() => {
-      if (cancelled || !configured) return;
-      return loadDataFromSupabase().catch(err => {
-        console.warn('Supabase fetch failed, fallback to local state:', err);
-      });
-    });
-    return () => {
-      cancelled = true;
-      sub?.subscription.unsubscribe();
-    };
-  }, [loadCompendium, loadDataFromSupabase, configVersion]);
+  // Bestiario, grimorio y nube se cargan dentro de useCampaignData.
 
   // PWA: registrar el service worker para uso offline en tablets del DM.
   useEffect(() => {
@@ -149,35 +89,6 @@ export default function MainApp() {
     else window.addEventListener('load', register);
     return () => window.removeEventListener('load', register);
   }, []);
-
-  // ---- Respaldo / restauración de la campaña ----------------------------
-  const handleExportCampaign = useCallback(() => {
-    downloadCampaign(
-      buildCampaign({
-        combatants,
-        items,
-        npcs,
-        notes,
-        party,
-        activeTab,
-        turnIndex: readStorage<number>(STORAGE_KEYS.turnIndex, 0),
-        round: readStorage<number>(STORAGE_KEYS.round, 1),
-      })
-    );
-  }, [combatants, items, npcs, notes, party, activeTab]);
-
-  const handleImportCampaign = useCallback((data: CampaignData) => {
-    setCombatants(data.combatants);
-    setItems(data.items);
-    setNpcs(data.npcs);
-    setNotes(data.notes);
-    if (Array.isArray(data.party)) setParty(data.party as PartyMember[]);
-    if (data.activeTab) setActiveTab(data.activeTab);
-    // Turno y ronda viven en el rastreador: se escriben directamente para que
-    // el recargado posterior arranque en el punto correcto.
-    writeStorage(STORAGE_KEYS.turnIndex, data.turnIndex ?? 0);
-    writeStorage(STORAGE_KEYS.round, data.round ?? 1);
-  }, [setCombatants, setItems, setNpcs, setNotes, setParty, setActiveTab]);
 
   // ---- Atajos globales de teclado ---------------------------------------
   useEffect(() => {
@@ -203,9 +114,7 @@ export default function MainApp() {
     try {
       // La ruta del servidor revoca el token y limpia las cookies httpOnly.
       await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
-      await supabase.auth.signOut();
-      // Sesión iniciada desde el modal de ajustes (credenciales en el navegador).
-      if (!isSupabaseConfigured()) await getSupabase().auth.signOut();
+      await getSupabase().auth.signOut();
       window.location.assign('/login');
     } finally {
       setLoggingOut(false);
@@ -213,22 +122,7 @@ export default function MainApp() {
   };
 
   const handleSendMonsterToCombat = (monster: Monster) => {
-    const dexMod = Math.floor((monster.stats.dex - 10) / 2);
-    const initRoll = Math.floor(Math.random() * 20) + 1 + dexMod;
-    const imported: Combatant = {
-      id: `comb-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-      name: monster.name,
-      initiative: initRoll,
-      hp_current: monster.hp_max,
-      hp_max: monster.hp_max,
-      ac: monster.ac,
-      is_player: false,
-      conditions: [],
-      condition_rounds: {},
-      dex_mod: dexMod,
-    };
-    const updated = [...combatants, imported].sort((a, b) => b.initiative - a.initiative);
-    setCombatants(updated);
+    setCombatants(sortCombatants([...combatants, monsterToCombatant(monster)]));
     setActiveTab('initiative');
   };
 
@@ -358,9 +252,9 @@ export default function MainApp() {
               </button>
 
               <button
-                onClick={handleExportCampaign}
-                className="hidden sm:flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
-                title="Descargar la campaña en JSON (Ctrl + S)"
+              onClick={exportCampaign}
+              className="hidden sm:flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
+              title="Descargar la campaña en JSON (Ctrl + S)"
               >
                 <Download className="w-3.5 h-3.5" />
               </button>
@@ -471,13 +365,13 @@ export default function MainApp() {
             <span>⚠️ {storageAlert}</span>
             <div className="flex items-center gap-2">
               <button
-                onClick={handleExportCampaign}
+                onClick={exportCampaign}
                 className="bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs hover:bg-amber-400 transition"
               >
                 Descargar Respaldo JSON
               </button>
               <button
-                onClick={() => setStorageAlert(null)}
+                onClick={dismissStorageAlert}
                 className="text-amber-400 hover:text-amber-200 font-bold px-2 py-1"
               >
                 ✕
@@ -541,20 +435,9 @@ export default function MainApp() {
       <SettingsModal
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        getCampaign={() =>
-          buildCampaign({
-            combatants,
-            items,
-            npcs,
-            notes,
-            party,
-            activeTab,
-            turnIndex: readStorage<number>(STORAGE_KEYS.turnIndex, 0),
-            round: readStorage<number>(STORAGE_KEYS.round, 1),
-          })
-        }
-        onImportCampaign={handleImportCampaign}
-        onConnectionChanged={() => setConfigVersion(v => v + 1)}
+        getCampaign={getCampaign}
+        onImportCampaign={importCampaign}
+        onConnectionChanged={reloadConnection}
       />
 
       {/* Paleta de comandos (Ctrl + K) */}
