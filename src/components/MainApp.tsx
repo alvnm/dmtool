@@ -183,18 +183,17 @@ export default function MainApp() {
       <header className="bg-dungeon-900 border-b border-dungeon-800 sticky top-0 z-40 shadow-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-2">
-            {/* Logo */}
-            <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => setActiveTab('dashboard')}>
-              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-amber-500/20 border border-amber-500/30 flex items-center justify-center bg-dungeon-950">
-                <img src="/icon-192.png" alt="DM Companion Logo" className="w-full h-full object-cover" />
+            {/* Botón Inicio / Logo */}
+            <button
+              type="button"
+              className="flex items-center cursor-pointer shrink-0 group rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              onClick={() => setActiveTab('dashboard')}
+              title={t('dashboard')}
+            >
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-amber-500/20 border border-amber-500/30 group-hover:border-amber-400 flex items-center justify-center bg-dungeon-950 transition">
+                <img src="/icon-192.png" alt="DM Companion" className="w-full h-full object-cover group-hover:scale-105 transition" />
               </div>
-              <div className="hidden sm:block">
-                <h1 className="text-lg font-bold text-slate-100 tracking-wide font-serif">
-                  DM <span className="text-amber-400">Companion</span>
-                </h1>
-                <p className="text-[10px] text-slate-400">D&D 5e Campaign Assistant</p>
-              </div>
-            </div>
+            </button>
 
             {/* Navigation Tabs */}
             <nav className="hidden md:flex items-center space-x-1 overflow-x-auto py-1 scrollbar-none flex-1 justify-center min-w-0">
