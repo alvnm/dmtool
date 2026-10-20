@@ -48,12 +48,22 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
   const CR_OPTIONS = ['Todos', '1/8', '1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
 
-  const filteredMonsters = monsters.filter(m => {
-    const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          m.type.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCr = selectedCr === 'Todos' || m.cr === selectedCr;
-    return matchesSearch && matchesCr;
-  });
+  const isCustomMonster = (m: Monster) => Boolean(m.isCustom || m.id.startsWith('mon-') || m.id.startsWith('custom-'));
+
+  const filteredMonsters = monsters
+    .filter(m => {
+      const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            m.type.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCr = selectedCr === 'Todos' || m.cr === selectedCr;
+      return matchesSearch && matchesCr;
+    })
+    .sort((a, b) => {
+      const aCustom = isCustomMonster(a);
+      const bCustom = isCustomMonster(b);
+      if (aCustom && !bCustom) return -1;
+      if (!aCustom && bCustom) return 1;
+      return a.name.localeCompare(b.name);
+    });
   const visibleMonsters = filteredMonsters.slice(0, visibleCount);
 
   // El cambio de filtros restaura la paginación visible.
@@ -82,6 +92,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
       stats: { str, dex, con, int, wis, cha },
       cr,
       traits: [],
+      isCustom: true,
       actions: actionsList.length > 0 ? actionsList : [
         { name: 'Ataque con Garrote', desc: '+3 al ataque, alcance 5 ft. Daño: 4 (1d6 + 1) contundente.' }
       ]

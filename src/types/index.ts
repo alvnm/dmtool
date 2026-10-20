@@ -31,6 +31,7 @@ export interface Monster {
   cr: string;
   actions: MonsterTraitAction[];
   traits: MonsterTraitAction[];
+  isCustom?: boolean;
   created_at?: string;
 }
 
@@ -45,6 +46,7 @@ export interface Spell {
   duration: string;
   description: string;
   classes: string[];
+  isCustom?: boolean;
   created_at?: string;
 }
 

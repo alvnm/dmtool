@@ -51,14 +51,24 @@ export const Spellbook: React.FC<SpellbookProps> = ({
     { label: 'Nivel 6+', val: '6+' },
   ];
 
-  const filteredSpells = spells.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          s.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesLevel = selectedLevel === 'Todos' || 
-                         (selectedLevel === '6+' ? s.level >= 6 : s.level.toString() === selectedLevel);
-    const matchesSchool = selectedSchool === 'Todas' || s.school === selectedSchool;
-    return matchesSearch && matchesLevel && matchesSchool;
-  });
+  const isCustomSpell = (s: Spell) => Boolean(s.isCustom || s.id.startsWith('sp-') || s.id.startsWith('custom-'));
+
+  const filteredSpells = spells
+    .filter(s => {
+      const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            s.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesLevel = selectedLevel === 'Todos' || 
+                           (selectedLevel === '6+' ? s.level >= 6 : s.level.toString() === selectedLevel);
+      const matchesSchool = selectedSchool === 'Todas' || s.school === selectedSchool;
+      return matchesSearch && matchesLevel && matchesSchool;
+    })
+    .sort((a, b) => {
+      const aCustom = isCustomSpell(a);
+      const bCustom = isCustomSpell(b);
+      if (aCustom && !bCustom) return -1;
+      if (!aCustom && bCustom) return 1;
+      return a.level !== b.level ? a.level - b.level : a.name.localeCompare(b.name);
+    });
   const visibleSpells = filteredSpells.slice(0, visibleCount);
 
   // El cambio de filtros restaura la paginación visible.
@@ -81,6 +91,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
       duration,
       description,
       classes: classesArray,
+      isCustom: true,
     };
 
     onUpdateSpells([...spells, newSpell]);

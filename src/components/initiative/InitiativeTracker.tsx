@@ -7,7 +7,7 @@ import { rollD20 } from '@/lib/dice';
 import { formatMod, monsterToCombatant, npcToCombatant, sortCombatants } from '@/lib/combat';
 import { 
   Swords, Plus, Trash2, Shield, Heart, ArrowRight, ArrowLeft,
-  RotateCcw, Sparkles, UserCheck, Skull, Dices, Timer, Maximize2, Minimize2,
+  RotateCcw, Sparkles, Search, UserCheck, Skull, Dices, Timer, Maximize2, Minimize2,
   Share2, Link2, Copy, Eye, EyeOff, Radio, Check
 } from 'lucide-react';
 import { usePersistentState } from '@/lib/usePersistentState';
@@ -45,6 +45,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   const [round, setRound] = usePersistentState<number>('round', 1);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
+  const [importSearchTerm, setImportSearchTerm] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Vista de jugadores en vivo (Supabase Realtime Broadcast).
@@ -1106,32 +1107,82 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-dungeon-800 pb-3">
+                        <div className="flex items-center justify-between border-b border-dungeon-800 pb-3">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-400" />
                 Importar al Combate desde la Base de Datos
               </h3>
               <button
-                onClick={() => setIsImportModalOpen(false)}
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportSearchTerm('');
+                }}
                 className="text-slate-500 hover:text-slate-300 text-sm"
               >
                 ✕
               </button>
             </div>
 
+            {/* Buscador de monstruos y NPCs */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={importSearchTerm}
+                onChange={e => setImportSearchTerm(e.target.value)}
+                placeholder="Buscar por nombre, tipo, raza o CR..."
+                className="w-full bg-dungeon-950 border border-dungeon-800 focus:border-amber-500/50 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-200 placeholder-slate-500 outline-none transition"
+                autoFocus
+              />
+              {importSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setImportSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {(() => {
+              const term = importSearchTerm.trim().toLowerCase();
+              const isCustomMon = (m: Monster) => Boolean(m.isCustom || m.id.startsWith('mon-') || m.id.startsWith('custom-'));
+              const filteredMonsters = monsters
+                .filter(m => !term || m.name.toLowerCase().includes(term) || m.type.toLowerCase().includes(term) || m.cr.toLowerCase().includes(term))
+                .sort((a, b) => {
+                  const aC = isCustomMon(a);
+                  const bC = isCustomMon(b);
+                  if (aC && !bC) return -1;
+                  if (!aC && bC) return 1;
+                  return a.name.localeCompare(b.name);
+                });
+              const filteredNpcs = npcs.filter(n => !term || n.name.toLowerCase().includes(term) || n.race.toLowerCase().includes(term) || n.disposition.toLowerCase().includes(term));
+
+              return (
             <div className="overflow-y-auto space-y-4 pr-1 flex-1">
               <div>
                 <h4 className="text-xs uppercase font-bold text-slate-400 mb-2 tracking-wider">
-                  Monstruos Disponibles ({monsters.length})
+                  Monstruos Disponibles ({filteredMonsters.length})
                 </h4>
                 <div className="space-y-2">
-                  {monsters.map(m => (
+                  {filteredMonsters.length === 0 ? (
+                    <p className="text-xs text-slate-500 py-3 italic text-center">No se encontraron monstruos con esa búsqueda.</p>
+                  ) : (
+                    filteredMonsters.map(m => (
                     <div
                       key={m.id}
                       className="bg-dungeon-950 border border-dungeon-800 hover:border-amber-500/50 rounded-lg p-3 flex items-center justify-between gap-2 transition"
                     >
                       <div className="min-w-0">
-                        <span className="font-bold text-slate-200 text-sm truncate block">{m.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-200 text-sm truncate block">{m.name}</span>
+                          {isCustomMon(m) && (
+                            <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded font-semibold">
+                              Creado
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-slate-400 flex items-center gap-3 mt-0.5">
                           <span>CR: {m.cr}</span>
                           <span>AC: {m.ac}</span>
@@ -1148,16 +1199,19 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                         + Añadir al Combate
                       </button>
                     </div>
-                  ))}
+                  )))}
                 </div>
               </div>
 
               <div className="pt-2">
                 <h4 className="text-xs uppercase font-bold text-slate-400 mb-2 tracking-wider">
-                  NPCs Registrados ({npcs.length})
+                  NPCs Registrados ({filteredNpcs.length})
                 </h4>
                 <div className="space-y-2">
-                  {npcs.map(n => (
+                  {filteredNpcs.length === 0 ? (
+                    <p className="text-xs text-slate-500 py-3 italic text-center">No se encontraron NPCs con esa búsqueda.</p>
+                  ) : (
+                    filteredNpcs.map(n => (
                     <div
                       key={n.id}
                       className="bg-dungeon-950 border border-dungeon-800 hover:border-amber-500/50 rounded-lg p-3 flex items-center justify-between gap-2 transition"
@@ -1175,10 +1229,12 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                         + Añadir al Combate
                       </button>
                     </div>
-                  ))}
+                  )))}
                 </div>
               </div>
             </div>
+              );
+            })()}
 
             <div className="flex justify-end pt-3 border-t border-dungeon-800">
               <button

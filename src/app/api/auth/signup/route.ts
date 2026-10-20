@@ -101,6 +101,12 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       );
     }
+    if (message.includes('rate limit')) {
+      return NextResponse.json(
+        { error: 'Límite de correos de confirmación excedido en el servidor. Inténtalo más tarde o desactiva la confirmación en Supabase.' },
+        { status: 429 }
+      );
+    }
     if (message.includes('password')) {
       return NextResponse.json(
         { error: 'La contraseña no cumple los requisitos del proyecto (mínimo 8 caracteres).' },
