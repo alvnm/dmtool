@@ -1,0 +1,11 @@
+import { DB_URL } from './conn.mjs';
+import pg from 'pg';
+const c = new pg.Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } });
+await c.connect();
+const cols = await c.query(`select column_name from information_schema.columns where table_schema='storage' and table_name='buckets' order by ordinal_position`);
+console.log('columnas storage.buckets:', cols.rows.map(r => r.column_name).join(', '));
+const b = await c.query(`select * from storage.buckets`);
+console.log('fila bucket:', JSON.stringify(b.rows));
+const t = await c.query(`select id from storage.tenants`).catch(e => ({ rows: [], err: e.message }));
+console.log('tenants:', t.err ?? JSON.stringify(t.rows));
+await c.end();

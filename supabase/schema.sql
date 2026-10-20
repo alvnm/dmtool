@@ -190,6 +190,10 @@ GRANT EXECUTE ON FUNCTION public.is_encounter_owner(UUID) TO authenticated;
 -- ---------------------------------------------------------------------
 -- CAMPAIGNS: solo el DM propietario
 -- ---------------------------------------------------------------------
+DROP POLICY IF EXISTS "campaigns_select_own" ON public.campaigns;
+DROP POLICY IF EXISTS "campaigns_insert_own" ON public.campaigns;
+DROP POLICY IF EXISTS "campaigns_update_own" ON public.campaigns;
+DROP POLICY IF EXISTS "campaigns_delete_own" ON public.campaigns;
 CREATE POLICY "campaigns_select_own" ON public.campaigns
   FOR SELECT TO authenticated USING (dm_user_id = auth.uid());
 CREATE POLICY "campaigns_insert_own" ON public.campaigns
@@ -343,7 +347,8 @@ BEGIN
     VALUES (c_id, 'La Mina Perdida de Phandelver', 'Campaña clásica de introducción a D&D 5e', 'D&D 5e', v_user)
     ON CONFLICT (id) DO NOTHING;
 
-    -- Monstruos asociados a la campaña de prueba
+    -- Monstruos asociados a la campaña de prueba (idempotente)
+    IF NOT EXISTS (SELECT 1 FROM public.monsters WHERE campaign_id = c_id) THEN
     INSERT INTO public.monsters (campaign_id, name, size, type, alignment, ac, hp_max, speed, stats, cr, traits, actions) VALUES
     (c_id, 'Duende (Goblin)', 'Pequeño', 'Humanoide', 'Neutral Malvado', 15, 7, '30 ft.', '{"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 8, "cha": 8}', '1/4',
     '[{"name": "Escape Escurridizo", "desc": "Puede Destrabar o Esconderse como acción adicional en su turno."}]',
@@ -352,11 +357,14 @@ BEGIN
     (c_id, 'Dragón Rojo Joven', 'Grande', 'Dragón', 'Caótico Malvado', 18, 178, '40 ft., volar 80 ft.', '{"str": 23, "dex": 10, "con": 21, "int": 14, "wis": 11, "cha": 19}', '10',
     '[{"name": "Vista Ciega", "desc": "Percepción a ciegas 30 ft. y visión en oscuridad 120 ft."}]',
     '[{"name": "Multiataque", "desc": "Realiza tres ataques: uno con mordedura y dos con garras."}, {"name": "Aliento de Fuego", "desc": "Cono de 30 ft., salvación de Destreza DC 17 o 56 (16d6) de daño de fuego."}]');
+    END IF;
 
-    -- Objetos e Inventario
+    -- Objetos e Inventario (idempotente)
+    IF NOT EXISTS (SELECT 1 FROM public.items WHERE campaign_id = c_id) THEN
     INSERT INTO public.items (campaign_id, name, type, rarity, weight, value_gp, assigned_to, description) VALUES
     (c_id, 'Poción de Curación', 'Poción', 'Común', 0.5, 50, 'Bolsa General', 'Restaura 2d4+2 puntos de vida.'),
     (c_id, 'Espada Larga +1', 'Arma', 'Poco Común', 3.0, 500, 'Valerius', '+1 al ataque y daño con este arma mágica.');
+    END IF;
 
     -- Encuentros
     INSERT INTO public.encounters (id, campaign_id, title, location, difficulty, status, notes) VALUES
@@ -366,7 +374,46 @@ BEGIN
 END $$;
 
 -- 2. Hechizos Populares (compendio global de hechizos; no dependen de ninguna campaña)
-INSERT INTO public.spells (name, level, school, casting_time, range, components, duration, description, classes) VALUES
-('Bola de Fuego (Fireball)', 3, 'Evocación', '1 Acción', '150 ft.', 'V, S, M (una bola de guano y azufre)', 'Instantáneo', 'Una brillante centella brota de tu dedo. Explota en una esfera de fuego de 20 pies de radio. Cada criatura sufre 8d6 de daño de fuego en salvación fallida de Destreza.', ARRAY['Mago', 'Hechicero']),
-('Curar Heridas (Cure Wounds)', 1, 'Evocación', '1 Acción', 'Toque', 'V, S', 'Instantáneo', 'Una criatura que toques recupera 1d8 + tu modificador por habilidad de conjuros.', ARRAY['Clérigo', 'Bardo', 'Paladín', 'Explorador', 'Druida']);
+-- Idempotente: solo inserta si aún no existen (evita duplicados al re-ejecutar el script).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.spells WHERE name = 'Bola de Fuego (Fireball)') THEN
+    INSERT INTO public.spells (name, level, school, casting_time, range, components, duration, description, classes) VALUES
+    ('Bola de Fuego (Fireball)', 3, 'Evocación', '1 Acción', '150 ft.', 'V, S, M (una bola de guano y azufre)', 'Instantáneo', 'Una brillante centella brota de tu dedo. Explota en una esfera de fuego de 20 pies de radio. Cada criatura sufre 8d6 de daño de fuego en salvación fallida de Destreza.', ARRAY['Mago', 'Hechicero']),
+    ('Curar Heridas (Cure Wounds)', 1, 'Evocación', '1 Acción', 'Toque', 'V, S', 'Instantáneo', 'Una criatura que toques recupera 1d8 + tu modificador por habilidad de conjuros.', ARRAY['Clérigo', 'Bardo', 'Paladín', 'Explorador', 'Druida']);
+  END IF;
+END $$;
+
+-- ---------------------------------------------------------------------
+-- STORAGE: bucket privado "uploads" (imágenes subidas por /api/uploads)
+-- Límite y tipos coinciden con src/lib/security/uploads.ts (1 MB, jpeg/png/webp/gif).
+-- ---------------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('uploads', 'uploads', false, 1000000, ARRAY['image/jpeg','image/png','image/webp','image/gif'])
+ON CONFLICT (id) DO UPDATE
+  SET public = EXCLUDED.public,
+      file_size_limit = EXCLUDED.file_size_limit,
+      allowed_mime_types = EXCLUDED.allowed_mime_types;
+
+-- Cada usuario solo ve/modifica sus propios archivos: la ruta es <uid>/<nombre>.
+DROP POLICY IF EXISTS "uploads_select_own" ON storage.objects;
+CREATE POLICY "uploads_select_own" ON storage.objects
+  FOR SELECT TO authenticated
+  USING (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+DROP POLICY IF EXISTS "uploads_insert_own" ON storage.objects;
+CREATE POLICY "uploads_insert_own" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+DROP POLICY IF EXISTS "uploads_update_own" ON storage.objects;
+CREATE POLICY "uploads_update_own" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text)
+  WITH CHECK (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+DROP POLICY IF EXISTS "uploads_delete_own" ON storage.objects;
+CREATE POLICY "uploads_delete_own" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'uploads' AND (storage.foldername(name))[1] = auth.uid()::text);
 

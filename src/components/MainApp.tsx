@@ -8,15 +8,12 @@ import {
   UserCheck, Gift, Settings, Search, Maximize2, Minimize2, Download
 } from 'lucide-react';
 import { getSupabase, isCloudConfigured } from '@/lib/supabase/client';
-import { usePersistentState, readStorage, writeStorage, STORAGE_ERROR_EVENT } from '@/lib/usePersistentState';
+import { usePersistentState } from '@/lib/usePersistentState';
+import { useCampaignData } from '@/lib/useCampaignData';
+import { sortCombatants, monsterToCombatant } from '@/lib/combat';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Toolbox } from '@/components/tools/Toolbox';
-import { loadBestiary, loadGrimoire, mergeById } from '@/lib/compendium';
-import { 
-  INITIAL_COMBATANTS, INITIAL_ITEMS, INITIAL_MONSTERS, 
-  INITIAL_NPCS, INITIAL_SPELLS, INITIAL_NOTES 
-} from '@/lib/mockData';
-import { Combatant, InventoryItem, Monster, NPC, Spell, DMNote } from '@/types';
+import { Monster } from '@/types';
 import { DmDashboard } from '@/components/dashboard/DmDashboard';
 import { InitiativeTracker } from '@/components/initiative/InitiativeTracker';
 import { InventoryTracker } from '@/components/inventory/InventoryTracker';
@@ -27,7 +24,6 @@ import { PartyManager } from '@/components/party/PartyManager';
 import { TreasureGenerator } from '@/components/treasure/TreasureGenerator';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { CommandPalette, type PaletteTabId } from '@/components/CommandPalette';
-import { buildCampaign, downloadCampaign, STORAGE_KEYS, type CampaignData } from '@/lib/campaign';
 
 export default function MainApp() {
   // Datos + nube: toda la carga/fusión vive en useCampaignData.
@@ -53,27 +49,7 @@ export default function MainApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [highlightNoteId, setHighlightNoteId] = useState<string | null>(null);
-  // Cambia cuando el DM guarda/borra credenciales en el modal de ajustes.
-  const [configVersion, setConfigVersion] = useState(0);
 
-  // App State (persistidos en localStorage: la sesión local sobrevive a un refresco)
-  const [combatants, setCombatants] = usePersistentState<Combatant[]>('combatants', INITIAL_COMBATANTS);
-  const [items, setItems] = usePersistentState<InventoryItem[]>('items', INITIAL_ITEMS);
-  const [monsters, setMonsters] = useState<Monster[]>(INITIAL_MONSTERS);
-  const [npcs, setNpcs] = usePersistentState<NPC[]>('npcs', INITIAL_NPCS);
-  const [spells, setSpells] = useState<Spell[]>(INITIAL_SPELLS);
-  const [notes, setNotes] = usePersistentState<DMNote[]>('notes', INITIAL_NOTES);
-  const [party, setParty] = usePersistentState<PartyMember[]>('party', []);
-
-  // Escuchar errores de cuota de localStorage
-  useEffect(() => {
-    const handleStorageError = (e: Event) => {
-      const custom = e as CustomEvent<{ message: string }>;
-      setStorageAlert(custom.detail?.message || 'Espacio local agotado. Descarga un respaldo JSON.');
-    };
-    window.addEventListener(STORAGE_ERROR_EVENT, handleStorageError);
-    return () => window.removeEventListener(STORAGE_ERROR_EVENT, handleStorageError);
-  }, []);
 
   // Bestiario, grimorio y nube se cargan dentro de useCampaignData.
 
@@ -102,12 +78,12 @@ export default function MainApp() {
       if (mod && e.key.toLowerCase() === 's') {
         // Respaldo rápido de la campaña sin pasar por el modal.
         e.preventDefault();
-        handleExportCampaign();
+        exportCampaign();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [handleExportCampaign]);
+  }, [exportCampaign]);
 
   const handleLogout = async () => {
     setLoggingOut(true);
