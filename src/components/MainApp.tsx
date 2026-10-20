@@ -185,8 +185,8 @@ export default function MainApp() {
           <div className="flex items-center justify-between h-16 gap-2">
             {/* Logo */}
             <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => setActiveTab('dashboard')}>
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-700 rounded-xl flex items-center justify-center text-slate-950 font-black shadow-lg shadow-amber-500/20">
-                <Sparkles className="w-6 h-6 fill-slate-950" />
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-amber-500/20 border border-amber-500/30 flex items-center justify-center bg-dungeon-950">
+                <img src="/icon-192.png" alt="DM Companion Logo" className="w-full h-full object-cover" />
               </div>
               <div className="hidden sm:block">
                 <h1 className="text-lg font-bold text-slate-100 tracking-wide font-serif">
