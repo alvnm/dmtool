@@ -1,0 +1,12 @@
+import { DB_URL } from './conn.mjs';
+import pg from 'pg';
+const c = new pg.Client({ connectionString: DB_URL, ssl: { rejectUnauthorized: false } });
+await c.connect();
+const total = await c.query(`select count(*)::int n, max(created_at) last from auth.users`);
+console.log('auth.users:', JSON.stringify(total.rows[0]));
+const pend = await c.query(`select count(*)::int n from auth.users where confirmation_token is not null and confirmation_token <> ''`);
+console.log('con confirmation_token pendiente:', pend.rows[0].n);
+const recent = await c.query(`select email, created_at, (confirmation_token is not null and confirmation_token <> '') as needs_confirm, (confirmation_sent_at is not null) as sent from auth.users order by created_at desc limit 8`);
+console.table?.(recent.rows);
+for (const r of recent.rows) console.log(' -', r.email, r.created_at.toISOString(), 'needs_confirm=', r.needs_confirm, 'sent=', r.sent);
+await c.end();
