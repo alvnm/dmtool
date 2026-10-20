@@ -10,6 +10,28 @@ export type ValidationResult<T> =
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@.]+(\.[^\s@.]+)+$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+export const ALLOWED_EMAIL_DOMAINS = [
+  'gmail.com',
+  'googlemail.com',
+  'yahoo.com',
+  'yahoo.es',
+  'hotmail.com',
+  'hotmail.es',
+  'outlook.com',
+  'outlook.es',
+  'live.com',
+  'icloud.com',
+  'proton.me',
+  'protonmail.com',
+] as const;
+
+export function hasAllowedEmailDomain(email: string): boolean {
+  const parts = email.toLowerCase().split('@');
+  if (parts.length !== 2) return false;
+  const domain = parts[1];
+  return (ALLOWED_EMAIL_DOMAINS as readonly string[]).includes(domain);
+}
+
 export function isEmail(value: unknown): value is string {
   return typeof value === 'string' && value.length <= 254 && EMAIL_RE.test(value);
 }

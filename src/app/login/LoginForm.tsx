@@ -48,6 +48,28 @@ export function LoginForm() {
       return;
     }
 
+    if (mode === 'signup') {
+      const allowedDomains = [
+        'gmail.com',
+        'googlemail.com',
+        'yahoo.com',
+        'yahoo.es',
+        'hotmail.com',
+        'hotmail.es',
+        'outlook.com',
+        'outlook.es',
+        'live.com',
+        'icloud.com',
+        'proton.me',
+        'protonmail.com',
+      ];
+      const domain = email.trim().toLowerCase().split('@')[1];
+      if (!domain || !allowedDomains.includes(domain)) {
+        setError('El correo debe pertenecer a un proveedor reconocido (ej: gmail.com, yahoo.com, outlook.com, hotmail.com).');
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {

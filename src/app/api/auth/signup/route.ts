@@ -13,7 +13,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseServerClient, serverSupabaseConfigured } from '@/lib/supabase/server';
 import { consume, loginPolicy, reset } from '@/lib/security/rateLimit';
-import { invalid, isEmail, isPlainObject, isText } from '@/lib/security/validate';
+import { invalid, isEmail, isPlainObject, isText, hasAllowedEmailDomain } from '@/lib/security/validate';
 import { sanitizeText } from '@/lib/security/sanitize';
 
 export const runtime = 'nodejs';
@@ -65,7 +65,11 @@ export async function POST(req: NextRequest) {
   const password = typeof body.password === 'string' ? body.password : '';
 
   const errors: string[] = [];
-  if (!isEmail(email)) errors.push('Email inválido.');
+  if (!isEmail(email)) {
+    errors.push('Email inválido.');
+  } else if (!hasAllowedEmailDomain(email)) {
+    errors.push('El correo debe pertenecer a un proveedor válido (ej: gmail.com, yahoo.com, outlook.com, hotmail.com, etc.).');
+  }
   if (!isText(password, { min: 8, max: 200 })) errors.push('La contraseña debe tener al menos 8 caracteres.');
   if (errors.length) {
     return NextResponse.json(invalid(errors), { status: 400 });
