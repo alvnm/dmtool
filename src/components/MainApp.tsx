@@ -12,6 +12,8 @@ import { usePersistentState } from '@/lib/usePersistentState';
 import { useCampaignData } from '@/lib/useCampaignData';
 import { sortCombatants, monsterToCombatant } from '@/lib/combat';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { useI18n } from '@/lib/i18n';
+import { Globe } from 'lucide-react';
 import { Toolbox } from '@/components/tools/Toolbox';
 import { Monster } from '@/types';
 import { DmDashboard } from '@/components/dashboard/DmDashboard';
@@ -26,6 +28,7 @@ import { SettingsModal } from '@/components/settings/SettingsModal';
 import { CommandPalette, type PaletteTabId } from '@/components/CommandPalette';
 
 export default function MainApp() {
+  const { t, language, toggleLanguage } = useI18n();
   // Datos + nube: toda la carga/fusión vive en useCampaignData.
   const {
     activeTab, setActiveTab,
@@ -103,14 +106,14 @@ export default function MainApp() {
   };
 
   const NAV_ITEMS: Array<{ id: PaletteTabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'dashboard', label: 'Panel', icon: LayoutDashboard },
-    { id: 'initiative', label: 'Iniciativa', icon: Swords },
-    { id: 'inventory', label: 'Inventario', icon: Backpack },
-    { id: 'monsters', label: 'Bestiario', icon: Skull },
-    { id: 'npcs', label: 'NPCs', icon: Users },
-    { id: 'spells', label: 'Grimorio', icon: BookOpen },
-    { id: 'party', label: 'Grupo', icon: UserCheck },
-    { id: 'treasure', label: 'Tesoros', icon: Gift },
+    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
+    { id: 'initiative', label: t('initiative'), icon: Swords },
+    { id: 'inventory', label: t('inventory'), icon: Backpack },
+    { id: 'monsters', label: t('monsters'), icon: Skull },
+    { id: 'npcs', label: t('npcs'), icon: Users },
+    { id: 'spells', label: t('spells'), icon: BookOpen },
+    { id: 'party', label: t('party'), icon: UserCheck },
+    { id: 'treasure', label: t('treasure'), icon: Gift },
   ];
 
   const activeLabel = NAV_ITEMS.find(i => i.id === activeTab)?.label ?? 'Panel';
@@ -220,47 +223,36 @@ export default function MainApp() {
               <button
                 onClick={() => setPaletteOpen(true)}
                 className="hidden sm:flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
-                title="Buscador rápido (Ctrl + K)"
+                title={t("searchTooltip")}
               >
                 <Search className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Buscar</span>
+                <span className="hidden lg:inline">{t("search")}</span>
                 <kbd className="hidden lg:inline text-[10px] font-mono border border-dungeon-600 rounded px-1">Ctrl K</kbd>
               </button>
 
               <button
               onClick={exportCampaign}
               className="hidden sm:flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
-              title="Descargar la campaña en JSON (Ctrl + S)"
+              title={t("downloadTooltip")}
               >
                 <Download className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Selector de idioma */}
+              <button
+                type="button"
+                onClick={toggleLanguage}
+                title={t('langTooltip')}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-dungeon-800 text-slate-300 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 transition"
+              >
+                <Globe className="w-3.5 h-3.5 text-amber-400" />
+                <span>{language.toUpperCase()}</span>
               </button>
 
               <ThemeToggle />
 
               {/* Estado de sincronización en la nube */}
-              {supabaseActive && (
-                <div
-                  className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium border transition ${
-                    syncStatus === 'saving'
-                      ? 'bg-amber-950/60 text-amber-300 border-amber-800 animate-pulse'
-                      : syncStatus === 'error'
-                        ? 'bg-red-950/60 text-red-300 border-red-800'
-                        : 'bg-emerald-950 text-emerald-300 border-emerald-800/80'
-                  }`}
-                  title={
-                    syncStatus === 'saving'
-                      ? 'Guardando cambios en Supabase...'
-                      : syncStatus === 'error'
-                        ? `Error de sincronización: ${syncError || 'Error de red'}`
-                        : 'Todos los cambios están sincronizados con la nube'
-                  }
-                >
-                  <span className={`w-2 h-2 rounded-full ${syncStatus === 'saving' ? 'bg-amber-400' : syncStatus === 'error' ? 'bg-red-400' : 'bg-emerald-400'}`} />
-                  <span className="hidden sm:inline">
-                    {syncStatus === 'saving' ? 'Guardando…' : syncStatus === 'error' ? 'Error sync' : 'Sincronizado'}
-                  </span>
-                </div>
-              )}
+              
 
               {/* Estado del almacenamiento + acceso a ajustes */}
               <button
@@ -285,10 +277,10 @@ export default function MainApp() {
               <button
                 onClick={() => setFocusMode(true)}
                 className="flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
-                title="Focus Mode: ocultar barras y maximizar el espacio (tablet/laptop en la mesa)"
+                title={t("focusTooltip")}
               >
                 <Maximize2 className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Focus</span>
+                <span className="hidden lg:inline">{t("focus")}</span>
               </button>
 
               {supabaseActive && (
@@ -298,7 +290,7 @@ export default function MainApp() {
                   className="flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-300 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-3 py-1.5 rounded-full font-medium transition disabled:opacity-60"
                   title="Cerrar sesión"
                 >
-                  <LogOut className="w-3.5 h-3.5" /> <span className="hidden md:inline">Salir</span>
+                  <LogOut className="w-3.5 h-3.5" /> <span className="hidden md:inline">{t("logout")}</span>
                 </button>
               )}
             </div>
@@ -397,9 +389,9 @@ export default function MainApp() {
           <button
             onClick={() => setFocusMode(false)}
             className="flex items-center gap-1.5 bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-full transition min-h-[40px]"
-            title="Salir del Focus Mode"
+            title={t("exitFocus")}
           >
-            <Minimize2 className="w-4 h-4" /> Focus
+            <Minimize2 className="w-4 h-4" /> {t("exitFocus")}
           </button>
         </motion.div>
       )}

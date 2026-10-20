@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Moon, ScrollText } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 export type ThemeName = 'dungeon' | 'parchment';
 
@@ -33,6 +34,7 @@ export function readStoredTheme(): ThemeName {
  */
 export const ThemeToggle: React.FC = () => {
   const [theme, setTheme] = useState<ThemeName>('dungeon');
+  const { t } = useI18n();
 
   useEffect(() => {
     const current = (document.documentElement.dataset.theme as ThemeName) || readStoredTheme();
@@ -52,16 +54,15 @@ export const ThemeToggle: React.FC = () => {
       type="button"
       onClick={toggle}
       aria-pressed={isParchment}
-      aria-label={isParchment ? 'Cambiar al tema Dungeon (oscuro)' : 'Cambiar al tema Pergamino'}
-      title={isParchment ? 'Tema Pergamino activo' : 'Tema Dungeon activo'}
-      className="flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-300 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-3 py-1 rounded-full font-medium transition"
+      aria-label={isParchment ? t('themeLight') : t('themeDark')}
+      title={isParchment ? t('themeLightActive') : t('themeDarkActive')}
+      className="flex items-center justify-center p-1.5 rounded-full bg-dungeon-800 text-slate-300 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 transition"
     >
       {isParchment ? (
         <Moon className="w-3.5 h-3.5 text-amber-400" />
       ) : (
         <ScrollText className="w-3.5 h-3.5 text-amber-400" />
       )}
-      <span className="hidden sm:inline">{isParchment ? 'Pergamino' : 'Dungeon'}</span>
     </button>
   );
 };
