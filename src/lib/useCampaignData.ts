@@ -113,23 +113,15 @@ export function useCampaignData(): CampaignDataApi {
   const [storageAlert, setStorageAlert] = useState<string | null>(null);
 
   // Datos de la campaña (persistidos: la sesión local sobrevive a un refresco)
-  const [combatants, setCombatants] = usePersistentState<Combatant[]>(STORAGE_KEYS.combatants, INITIAL_COMBATANTS);
-  const [items, setItems] = usePersistentState<InventoryItem[]>(STORAGE_KEYS.items, INITIAL_ITEMS);
-  const [monsters, setMonsters] = usePersistentState<Monster[]>(STORAGE_KEYS.monsters, INITIAL_MONSTERS);
-  const [npcs, setNpcs] = usePersistentState<NPC[]>(STORAGE_KEYS.npcs, INITIAL_NPCS);
-  const [spells, setSpells] = usePersistentState<Spell[]>(STORAGE_KEYS.spells, INITIAL_SPELLS);
-  const [notes, setNotes] = usePersistentState<DMNote[]>(STORAGE_KEYS.notes, INITIAL_NOTES);
+  // En un dispositivo nuevo o limpio, arrancan vacíos a menos que haya datos guardados.
+  const [combatants, setCombatants] = usePersistentState<Combatant[]>(STORAGE_KEYS.combatants, []);
+  const [items, setItems] = usePersistentState<InventoryItem[]>(STORAGE_KEYS.items, []);
+  const [monsters, setMonsters] = usePersistentState<Monster[]>(STORAGE_KEYS.monsters, []);
+  const [npcs, setNpcs] = usePersistentState<NPC[]>(STORAGE_KEYS.npcs, []);
+  const [spells, setSpells] = usePersistentState<Spell[]>(STORAGE_KEYS.spells, []);
+  const [notes, setNotes] = usePersistentState<DMNote[]>(STORAGE_KEYS.notes, []);
   const [party, setParty] = usePersistentState<PartyMember[]>(STORAGE_KEYS.party, []);
-  const [auditLog, setAuditLog] = usePersistentState<AuditLogEntry[]>(STORAGE_KEYS.auditLog, [
-    {
-      id: 'init-1',
-      timestamp: new Date().toISOString(),
-      author: 'DM',
-      entityType: 'party',
-      action: 'create',
-      summary: 'Campaña iniciada en DM Companion',
-    },
-  ]);
+  const [auditLog, setAuditLog] = usePersistentState<AuditLogEntry[]>(STORAGE_KEYS.auditLog, []);
 
   const logEvent = useCallback(
     (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => {

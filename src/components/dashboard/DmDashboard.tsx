@@ -126,20 +126,24 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
               onClick={() => onSelectTab(card.id)}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className="group card p-3.5 text-left border border-dungeon-800 hover:border-amber-500/40 transition duration-150 relative overflow-hidden"
+              className="group card p-3 text-left border border-dungeon-800 hover:border-amber-500/40 transition duration-150 flex flex-col justify-between min-h-[92px] w-full"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className={`p-2 rounded-lg border ${card.iconClass}`}>
+              <div className="flex items-center justify-between gap-1 w-full mb-1">
+                <div className={`p-1.5 rounded-lg border ${card.iconClass} shrink-0`}>
                   <Icon className="w-4 h-4" />
                 </div>
-                <span className={`text-micro font-bold px-1.5 py-0.5 rounded ${card.badgeClass}`}>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${card.badgeClass} shrink-0`}>
                   {card.count}
                 </span>
               </div>
-              <h3 className="font-bold text-slate-100 text-xs sm:text-sm group-hover:text-amber-400 transition truncate">
-                {card.title}
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5 truncate">{card.detail}</p>
+              <div className="w-full min-w-0">
+                <h3 className="font-bold text-slate-100 text-xs group-hover:text-amber-400 transition truncate leading-tight">
+                  {card.title}
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">
+                  {card.detail}
+                </p>
+              </div>
             </motion.button>
           );
         })}
