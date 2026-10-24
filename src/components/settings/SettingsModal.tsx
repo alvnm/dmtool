@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Database, Cloud, HardDrive, Download, Upload, KeyRound,
-  Keyboard, CheckCircle2, AlertTriangle, Loader2,
+  Keyboard, CheckCircle2, AlertTriangle, Loader2, Copy, Trash2, RotateCcw, ClipboardPaste
 } from 'lucide-react';
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import {
@@ -13,15 +13,13 @@ import {
 import {
   downloadCampaign, parseCampaign, type CampaignData, type CampaignExport,
 } from '@/lib/campaign';
+import { useToast } from '@/components/Toast';
 
 interface SettingsModalProps {
   open: boolean;
   onClose: () => void;
-  /** Datos actuales de la campaña para el respaldo JSON. */
   getCampaign: () => CampaignExport;
-  /** Aplica una campaña importada por el DM. */
   onImportCampaign: (data: CampaignData) => void;
-  /** La conexión cambió (guardada o borrada): la app debe resincronizar. */
   onConnectionChanged: () => void;
 }
 
@@ -29,15 +27,9 @@ const SHORTCUTS: Array<{ keys: string; desc: string }> = [
   { keys: 'Espacio / Enter', desc: 'Avanzar al siguiente turno (en Iniciativa)' },
   { keys: 'Ctrl + K', desc: 'Buscador rápido: saltar a notas, monstruos, NPCs o pestañas' },
   { keys: 'Esc', desc: 'Cerrar ventanas, paleta y herramientas' },
-  { keys: 'Ctrl + S', desc: 'Descargar la campaña en JSON (respaldo)' },
+  { keys: 'Ctrl + S', desc: 'Descargar la campaña en JSON (respaldo rápido)' },
 ];
 
-/**
- * Ajustes del DM en un solo sitio:
- *  1. Conexión con Supabase (variables del servidor o credenciales pegadas aquí).
- *  2. Respaldo de la campaña en JSON (exportar / importar).
- *  3. Atajos de teclado.
- */
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   open,
   onClose,
@@ -45,6 +37,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onImportCampaign,
   onConnectionChanged,
 }) => {
+  const toast = useToast();
   const envConfigured = isSupabaseConfigured();
   const remote = getRemoteConfig();
 
@@ -53,14 +46,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [checking, setChecking] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
-  // Inicio de sesión en la nube cuando las credenciales vienen del modal.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [signingIn, setSigningIn] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Importación de campaña
+  // Importación / Exportación JSON con soporte de portapapeles y comparativa
   const [importFeedback, setImportFeedback] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const [rawJsonText, setRawJsonText] = useState('');
+  const [showJsonInspector, setShowJsonInspector] = useState(false);
+  const [copiedJson, setCopiedJson] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -80,6 +75,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setFeedback(null);
     setAuthError(null);
     setImportFeedback(null);
+    setShowJsonInspector(false);
+    setRawJsonText('');
   }, [open]);
 
   const handleSaveConfig = async (e: React.FormEvent) => {
@@ -98,10 +95,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleClearConfig = () => {
+    if (!window.confirm('¿Borrar las credenciales de Supabase guardadas en este navegador?')) return;
     clearRemoteConfig();
     setUrl('');
     setKey('');
-    setFeedback({ kind: 'ok', text: 'Credenciales borradas. La app vuelve al modo local.' });
+    setFeedback({ kind: 'ok', text: 'Credenciales eliminadas. La app vuelve al modo local.' });
     onConnectionChanged();
   };
 
@@ -121,11 +119,68 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleExport = () => {
     try {
-      downloadCampaign(getCampaign());
+      const camp = getCampaign();
+      downloadCampaign(camp);
       setImportFeedback({ kind: 'ok', text: 'Campaña exportada como archivo .json.' });
+      toast.success('Archivo .json generado y descargado.');
     } catch {
       setImportFeedback({ kind: 'error', text: 'No se pudo generar el archivo de respaldo.' });
+      toast.error('Error al generar el respaldo.');
     }
+  };
+
+  const handleCopyJsonToClipboard = () => {
+    try {
+      const camp = getCampaign();
+      const str = JSON.stringify(camp, null, 2);
+      navigator.clipboard.writeText(str);
+      setCopiedJson(true);
+      toast.success('JSON copiado al portapapeles.');
+      setTimeout(() => setCopiedJson(false), 2000);
+    } catch {
+      toast.error('No se pudo copiar el JSON.');
+    }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        toast.error('El portapapeles está vacío.');
+        return;
+      }
+      setRawJsonText(text);
+      setShowJsonInspector(true);
+      toast.info('Texto pegado desde el portapapeles. Pulsa «Aplicar Campaña».');
+    } catch {
+      toast.error('Permiso denegado para leer el portapapeles.');
+    }
+  };
+
+  const handleApplyRawJson = () => {
+    if (!rawJsonText.trim()) return;
+    try {
+      const data = parseCampaign(rawJsonText);
+      onImportCampaign(data);
+      setImportFeedback({ kind: 'ok', text: 'Campaña cargada y validada correctamente.' });
+      toast.success('¡Campaña restaurada con éxito!');
+      setTimeout(() => window.location.reload(), 900);
+    } catch (err) {
+      setImportFeedback({
+        kind: 'error',
+        text: err instanceof Error ? err.message : 'Error en la estructura del JSON.',
+      });
+      toast.error('El formato del JSON no es válido.');
+    }
+  };
+
+  const handleResetEntireCampaign = () => {
+    if (!window.confirm('⚠️ ¿Estás completamente seguro de restablecer la campaña a los datos iniciales? Se perderán las modificaciones locales si no tienes un respaldo JSON.')) {
+      return;
+    }
+    localStorage.clear();
+    toast.info('Restableciendo datos de ejemplo...');
+    setTimeout(() => window.location.reload(), 500);
   };
 
   const handleImportFile = async (file: File) => {
@@ -135,12 +190,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       const data = parseCampaign(text);
       onImportCampaign(data);
       setImportFeedback({ kind: 'ok', text: 'Campaña importada correctamente. Se recarga para aplicarla.' });
+      toast.success('¡Campaña importada con éxito!');
       setTimeout(() => window.location.reload(), 900);
     } catch (err) {
       setImportFeedback({
         kind: 'error',
         text: err instanceof Error ? err.message : 'No se pudo importar el archivo.',
       });
+      toast.error('Archivo no válido.');
     }
   };
 
@@ -169,7 +226,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* Cabecera */}
             <div className="sticky top-0 bg-dungeon-900 border-b border-dungeon-800 px-5 py-4 flex items-center justify-between z-10">
               <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-amber-400" /> Ajustes
+                <KeyRound className="w-5 h-5 text-amber-400" /> Ajustes & Datos
               </h2>
               <button
                 onClick={onClose}
@@ -186,27 +243,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Database className="w-4 h-4 text-amber-400" />
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300">
-                    Sincronización en la nube
+                    Base de datos (Supabase)
                   </h3>
                 </div>
 
-                <div className="flex items-start gap-2 text-xs rounded-lg border px-3 py-2.5">
+                <div className="flex items-start gap-2.5 p-3 rounded-lg border border-dungeon-800 bg-dungeon-950 text-xs">
                   {envConfigured ? (
                     <>
                       <Cloud className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                      <p className="text-emerald-300">
-                        Conectado por <span className="font-semibold">variables de entorno</span> del servidor
-                        (.env.local / Vercel). Así se gestiona el login y la sesión en todas las pantallas.
-                      </p>
-                    </>
-                  ) : remote ? (
-                    <>
-                      <Cloud className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                      <p className="text-amber-300">
-                        Credenciales guardadas <span className="font-semibold">en este navegador</span>: la
-                        sincronización funciona sin tocar .env.local. En otros dispositivos tendrás que pegarlas
-                        de nuevo (o exportar/importar la campaña en JSON).
-                      </p>
+                      <div>
+                        <p className="font-semibold text-emerald-300">Conectado por variables de entorno</p>
+                        <p className="text-slate-400 mt-0.5">
+                          El servidor web ya tiene configurado el proyecto. Las peticiones se autentican por cookie.
+                        </p>
+                      </div>
                     </>
                   ) : (
                     <>
@@ -222,49 +272,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {!envConfigured && (
                   <form onSubmit={handleSaveConfig} className="space-y-3">
                     <div>
-                      <label className="label">
-                        URL del proyecto Supabase
-                      </label>
+                      <label className="label">URL del proyecto Supabase</label>
                       <input
                         type="url"
                         value={url}
                         onChange={e => setUrl(e.target.value)}
                         placeholder="https://TU-PROYECTO.supabase.co"
-                        className="input p-2.5 min-h-[42px] font-mono"
+                        className="input p-2.5 min-h-[42px] font-mono text-xs"
                       />
                     </div>
                     <div>
-                      <label className="label">
-                        Clave pública (anon / publishable)
-                      </label>
+                      <label className="label">Clave pública (anon / publishable)</label>
                       <input
                         type="password"
                         value={key}
                         onChange={e => setKey(e.target.value)}
                         placeholder="eyJhbGciOi... (role anon)"
                         autoComplete="off"
-                        className="input p-2.5 min-h-[42px] font-mono"
+                        className="input p-2.5 min-h-[42px] font-mono text-xs"
                       />
-                      <p className="text-micro text-slate-500 mt-1">
-                        Sólo se acepta la clave pública. La <span className="text-red-400">service_role</span> se
-                        rechaza: nunca debe salir del servidor.
-                      </p>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
                       <button
                         type="submit"
                         disabled={checking || !url.trim() || !key.trim()}
-                        className="btn btn-primary flex items-center gap-2 text-sm py-2.5 disabled:opacity-50 min-h-[44px]"
+                        className="btn btn-primary flex items-center gap-2 text-xs py-2 disabled:opacity-50"
                       >
-                        {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                        {checking ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                         Comprobar y guardar
                       </button>
                       {remote && (
                         <button
                           type="button"
                           onClick={handleClearConfig}
-                          className="btn text-slate-400 hover:text-red-400 px-3 py-2.5 border border-dungeon-700 min-h-[44px]"
+                          className="btn text-slate-400 hover:text-red-400 px-3 py-2 border border-dungeon-700 text-xs"
                         >
                           Borrar credenciales
                         </button>
@@ -290,73 +332,60 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     {feedback.text}
                   </p>
                 )}
-
-                {/* Login en la nube cuando la conexión viene del modal */}
-                {!envConfigured && remote && (
-                  <form onSubmit={handleSignIn} className="border-t border-dungeon-800 pt-3 space-y-3">
-                    <p className="text-xs text-slate-400">
-                      Inicia sesión en tu proyecto para leer la campaña en cualquier dispositivo:
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        type="email"
-                        required
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        placeholder="tu@email.com"
-                        className="input p-2.5 min-h-[42px]"
-                      />
-                      <input
-                        type="password"
-                        required
-                        minLength={8}
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        placeholder="Contraseña"
-                        className="input p-2.5 min-h-[42px]"
-                      />
-                    </div>
-                    {authError && <p className="text-xs text-red-400">{authError}</p>}
-                    <button
-                      type="submit"
-                      disabled={signingIn}
-                      className="btn flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 text-sm px-4 py-2.5 disabled:opacity-50 min-h-[44px]"
-                    >
-                      {signingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
-                      Conectar con Supabase
-                    </button>
-                  </form>
-                )}
               </section>
 
-              {/* 2. RESPALDO JSON */}
+              {/* 2. RESPALDO Y GESTIÓN DE DATOS JSON */}
               <section className="space-y-3 border-t border-dungeon-800 pt-5">
-                <div className="flex items-center gap-2">
-                  <Download className="w-4 h-4 text-amber-400" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300">
-                    Respaldo de la campaña
-                  </h3>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Download className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300">
+                      Entrada / Salida de Datos (JSON)
+                    </h3>
+                  </div>
+                  <button
+                    onClick={handleResetEntireCampaign}
+                    className="btn flex items-center gap-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-2.5 py-1 rounded"
+                    title="Borrar cambios locales y volver a datos de ejemplo"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" /> Restablecer datos
+                  </button>
                 </div>
 
                 <p className="text-xs text-slate-400">
-                  Descarga notes, iniciativa, inventario, NPCs, bestiario propio y grupo en un archivo .json,
-                  o tráelo desde otro navegador. No incluye credenciales.
+                  Exporta e importa personajes, notas, iniciativa, inventario y bestiario. Puedes descargar un archivo, copiar el JSON o pegar texto directamente.
                 </p>
 
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={handleExport}
-                    className="btn flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-sm px-4 py-2.5 min-h-[44px]"
+                    className="btn flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs px-3 py-2"
                   >
-                    <Download className="w-4 h-4" /> Exportar JSON
+                    <Download className="w-3.5 h-3.5" /> Descargar archivo .json
+                  </button>
+
+                  <button
+                    onClick={handleCopyJsonToClipboard}
+                    className="btn flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 border border-dungeon-700 text-xs px-3 py-2"
+                  >
+                    {copiedJson ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedJson ? 'Copiado' : 'Copiar JSON'}
                   </button>
 
                   <button
                     onClick={() => fileRef.current?.click()}
-                    className="btn flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 border border-dungeon-700 text-sm px-4 py-2.5 min-h-[44px]"
+                    className="btn flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 border border-dungeon-700 text-xs px-3 py-2"
                   >
-                    <Upload className="w-4 h-4" /> Importar JSON
+                    <Upload className="w-3.5 h-3.5" /> Subir archivo
                   </button>
+
+                  <button
+                    onClick={handlePasteFromClipboard}
+                    className="btn flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 border border-dungeon-700 text-xs px-3 py-2"
+                  >
+                    <ClipboardPaste className="w-3.5 h-3.5 text-amber-400" /> Pegar del portapapeles
+                  </button>
+
                   <input
                     ref={fileRef}
                     type="file"
@@ -368,6 +397,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       e.target.value = '';
                     }}
                   />
+                </div>
+
+                {/* Editor / Inspector de texto JSON */}
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowJsonInspector(!showJsonInspector)}
+                    className="text-xs text-amber-400 hover:underline flex items-center gap-1"
+                  >
+                    {showJsonInspector ? 'Ocultar editor de texto' : 'Ver / pegar texto JSON directamente'}
+                  </button>
+
+                  {showJsonInspector && (
+                    <div className="space-y-2 p-3 bg-dungeon-950 border border-dungeon-800 rounded-lg">
+                      <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Pega aquí el contenido JSON para validar y restaurar:</span>
+                        <button
+                          type="button"
+                          onClick={() => setRawJsonText('')}
+                          className="text-slate-500 hover:text-slate-300"
+                        >
+                          Limpiar
+                        </button>
+                      </div>
+                      <textarea
+                        rows={6}
+                        value={rawJsonText}
+                        onChange={e => setRawJsonText(e.target.value)}
+                        placeholder='{"format": "dm-companion-campaign", "version": 1, ...}'
+                        className="w-full bg-dungeon-900 border border-dungeon-800 rounded p-2 text-xs font-mono text-slate-200 resize-y"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyRawJson}
+                        disabled={!rawJsonText.trim()}
+                        className="btn btn-primary text-xs w-full py-2 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Aplicar y Validar Campaña
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {importFeedback && (
