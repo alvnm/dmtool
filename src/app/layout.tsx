@@ -54,6 +54,11 @@ export const metadata: Metadata = {
     title: 'DM Companion',
     statusBarStyle: 'black-translucent',
   },
+  // Chrome avisa de que apple-mobile-web-app-capable está obsoleto:
+  // se añade el nombre estándar moderno para instalar/PWA en Android.
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
   openGraph: {
     type: 'website',
     locale: 'es_ES',

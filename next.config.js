@@ -2,6 +2,12 @@
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// HTTPS forzado solo con FORCE_HTTPS=1: mismo criterio que el middleware.
+// Next inyecta x-forwarded-proto=http en conexiones directas, así que sin un
+// flag explícito `next start` local en producción debe seguir sirviendo por http
+// (Vercel/NGINX redirigen HTTP→HTTPS en su propio plano).
+const forceHttps = process.env.FORCE_HTTPS === '1';
+
 // CSP: 'self' + Supabase. En desarrollo se permite eval (HMR) e imágenes de data:.
 const csp = [
   "default-src 'self'",
@@ -15,7 +21,7 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  ...(isProd ? ["upgrade-insecure-requests"] : []),
+  ...(isProd && forceHttps ? ["upgrade-insecure-requests"] : []),
 ].join('; ');
 
 const securityHeaders = [
@@ -38,11 +44,11 @@ const nextConfig = {
   poweredByHeader: false, // elimina el banner X-Powered-By: Next.js
   compress: true, // compresión Gzip / Brotli
 
-  // Optimización de importación de paquetes para reducir el bundle JS
-  optimizePackageImports: ['lucide-react', 'framer-motion'],
-
   // Acciones de servidor: solo desde el propio origen.
+  // optimizePackageImports es una opción experimental: debe vivir dentro de
+  // `experimental` (fuera de ahí Next la ignora y avisa en cada build).
   experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
     serverActions: {
       allowedOrigins: ['localhost:3000'],
       bodySizeLimit: '100kb',

@@ -116,7 +116,9 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* Sin shrink-0: en pantallas estrechas el grupo debe poder encoger
+              y envolver los botones, si no la página hace scroll horizontal. */}
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
             <button
               onClick={() => onSelectTab('party')}
               className="btn btn-primary flex items-center gap-1.5 px-3 py-2 text-sm shadow"

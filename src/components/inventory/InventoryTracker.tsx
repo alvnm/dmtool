@@ -185,7 +185,7 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
 
       {/* Filter and Search Bar */}
       <div className="card flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3 flex-1 min-w-[280px]">
+        <div className="flex items-center gap-3 flex-1 min-w-[220px]">
           <div className="relative w-full">
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -198,8 +198,10 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 flex-wrap min-w-0">
+          {/* flex-wrap aquí también: sin él el min-content de la fila es la suma
+              de los dos select y la tarjeta desborda en móvil (scroll horizontal). */}
+          <div className="flex items-center gap-2 flex-wrap">
             <Filter className="w-4 h-4 text-slate-500" />
             <select
               value={selectedType}

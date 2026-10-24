@@ -43,7 +43,10 @@ export async function GET(req: NextRequest) {
       cache.set(kind, entry);
     }
     const res = NextResponse.json({ kind, count: entry.data.length, data: entry.data });
-    res.headers.set('Cache-Control', 'public, max-age=300');
+    // ~1 MB de SRD: el servidor ya cachea por mtime, así que al cliente se le
+    // permite reutilizar la descarga y revalidar en segundo plano (SWR) en vez
+    // de volver a bajar el JSON completo en cada visita.
+    res.headers.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
     return res;
   } catch {
     return NextResponse.json(

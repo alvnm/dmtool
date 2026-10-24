@@ -70,11 +70,15 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // --- 1. Fuerza HTTPS ---------------------------------------------------
-  // Solo cuando un proxy termina TLS e informa x-forwarded-proto (Vercel,
-  // NGINX, ALB). Una conexión directa (next start en local) no se redirige
-  // para evitar bucles.
+  // Solo con FORCE_HTTPS=1 explícito. Next.js inyecta `x-forwarded-proto:
+  // http` en conexiones directas (base-server.js `??=`), por lo que comprobar
+  // solo esa cabecera rompía `next start` en local con bucles 308→https.
+  // En Vercel/NGINX/ALB el plano de entrada ya redirige HTTP→HTTPS antes de
+  // llegar aquí; esta cabecera es solo una capa extra para despliegues que
+  // sirvan la app tras un proxy sin su propia redirección.
+  const forceHttps = process.env.FORCE_HTTPS === '1';
   const forwardedProto = req.headers.get('x-forwarded-proto');
-  if (isProd && forwardedProto === 'http') {
+  if (isProd && forceHttps && forwardedProto === 'http') {
     const url = req.nextUrl.clone();
     url.protocol = 'https:';
     return securityHeaders(NextResponse.redirect(url, 308));

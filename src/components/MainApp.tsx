@@ -252,7 +252,7 @@ export default function MainApp() {
             className="btn flex items-center gap-3 px-4 h-16 shrink-0 border-b border-dungeon-800 group"
           >
             <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-500/30 group-hover:border-amber-400 flex items-center justify-center bg-dungeon-950 transition">
-              <img src="/icon-192.png" alt="" aria-hidden="true" className="w-full h-full object-cover" />
+              <img src="/icon-192.png" alt="" aria-hidden="true" width={192} height={192} decoding="async" className="w-full h-full object-cover" />
             </div>
             <span className="font-serif text-base text-amber-400 tracking-wide">DM Companion</span>
           </button>
@@ -305,7 +305,9 @@ export default function MainApp() {
       {!focusMode && (
       <header className="bg-dungeon-900 border-b border-dungeon-800 sticky top-0 z-40 shadow-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between lg:justify-end h-16 gap-2">
+          {/* flex-wrap + min-h-16: en pantallas de 320px las acciones no caben en
+              una línea y, sin poder envolver, la página hacía scroll horizontal. */}
+          <div className="flex flex-wrap items-center justify-between lg:justify-end min-h-[4rem] gap-2">
             {/* Botón Inicio / Logo */}
             <button
               type="button"
@@ -314,7 +316,7 @@ export default function MainApp() {
               title={t('dashboard')} aria-label={t('dashboard')}
             >
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-amber-500/20 border border-amber-500/30 group-hover:border-amber-400 flex items-center justify-center bg-dungeon-950 transition">
-                <img src="/icon-192.png" alt="DM Companion" className="w-full h-full object-cover group-hover:scale-105 transition" />
+                <img src="/icon-192.png" alt="DM Companion" width={192} height={192} decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition" />
               </div>
             </button>
 
@@ -341,7 +343,7 @@ export default function MainApp() {
             </nav>
 
             {/* Acciones rápidas */}
-            <div className="flex items-center gap-1.5 pl-1 shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-1.5 pl-1 ml-auto">
               <button
                 onClick={() => setPaletteOpen(true)}
                 className="btn btn-secondary flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
