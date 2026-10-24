@@ -170,6 +170,17 @@ export function useCampaignData(): CampaignDataApi {
     setSyncStatus('saving');
     setSyncError(null);
     try {
+      // 1. Verificar si hay un usuario autenticado. En Supabase con RLS,
+      // las peticiones sin autenticación (rol anon) no tienen permisos SELECT
+      // sobre las tablas de la campaña.
+      const { data: authData } = await client.auth.getUser();
+      if (!authData.user) {
+        // En modo local o sin sesión activa en el cliente: en espera limpia
+        setSyncStatus('idle');
+        setSyncError(null);
+        return;
+      }
+
       const [monRes, spellRes, npcRes, itemRes, combRes, noteRes] = await Promise.all([
         client.from('monsters').select('*'),
         client.from('spells').select('*'),
@@ -184,15 +195,18 @@ export function useCampaignData(): CampaignDataApi {
       if (spellRes.data?.length) setSpells(prev => mergeById(prev, spellRes.data!));
       if (npcRes.data?.length) setNpcs(prev => mergeById(prev, npcRes.data!));
       if (itemRes.data?.length) setItems(prev => mergeById(prev, itemRes.data!));
-      // Combatientes y notas pueden llevar nombres/títulos repetidos
-      // legítimamente: se fusionan solo por identificador.
       if (combRes.data?.length) setCombatants(prev => unionById(prev, combRes.data!));
       if (noteRes.data?.length) setNotes(prev => unionById(prev, noteRes.data!));
 
       const failed = [monRes, spellRes, npcRes, itemRes, combRes, noteRes].find(r => r.error);
       if (failed) {
-        setSyncStatus('error');
-        setSyncError(failed.error!.message);
+        // Si el fallo es 42501 (permiso denegado por RLS/sesión), no es un error de caída de red
+        if (failed.error?.code === '42501') {
+          setSyncStatus('idle');
+        } else {
+          setSyncStatus('error');
+          setSyncError(failed.error!.message);
+        }
       } else {
         setSyncStatus('saved');
       }
