@@ -354,7 +354,7 @@ export default function PlayerCombatView() {
 
         {/* Estado de la conexión */}
         {state && secondsSinceUpdate != null && secondsSinceUpdate >= 30 && (
-          <p className="text-center text-xs text-amber-300/80 flex items-center justify-center gap-1.5 pt-1">
+          <p className="text-center text-xs text-amber-300 flex items-center justify-center gap-1.5 pt-1">
             <Users className="w-3.5 h-3.5" />
             Sin actualizaciones del DM desde hace {secondsSinceUpdate}s. Esta vista se
             refrescará sola cuando vuelva a moverse el combate.

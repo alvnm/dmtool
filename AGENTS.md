@@ -12,6 +12,10 @@ Five canonical roles recorded as a `Status:` line per issue. See `docs/agents/tr
 
 Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### Standards
+
+Performance and UX standards in `docs/agents/standards.md`.
+
 ### Committees
 
 Cross-session coordination and decision records in `docs/committees/`. See `docs/committees/README.md`.

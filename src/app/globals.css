@@ -24,7 +24,7 @@
   --slate-200: 226 232 240;
   --slate-300: 203 213 225;
   --slate-400: 148 163 184;
-  --slate-500: 100 116 139;
+  --slate-500: 120 135 158;
   --slate-600: 71 85 105;
   --slate-700: 51 65 85;
   --slate-800: 30 41 59;
@@ -36,7 +36,7 @@
   --amber-200: 253 230 138;
   --amber-300: 252 211 77;
   --amber-400: 251 191 36;
-  --amber-450: 224 161 46;
+  --amber-450: 251 191 36;
   --amber-500: 245 158 11;
   --amber-600: 217 119 6;
   --amber-700: 180 83 9;
@@ -104,6 +104,13 @@
   --blue-900: 30 58 138;
   --blue-950: 23 37 84;
 
+  --sky-300: 125 211 252;
+  --sky-400: 56 189 248;
+  --sky-500: 14 165 233;
+  --sky-600: 2 132 199;
+  --sky-700: 3 105 161;
+  --sky-800: 7 89 133;
+
   --indigo-50: 238 242 255;
   --indigo-100: 224 231 255;
   --indigo-200: 199 210 254;
@@ -164,7 +171,7 @@
   --slate-200: 58 43 22;
   --slate-300: 74 56 32;
   --slate-400: 109 90 61;
-  --slate-500: 125 106 74;
+  --slate-500: 110 92 62;
   --slate-600: 139 120 84;
   --slate-700: 160 142 104;
   --slate-800: 182 166 131;
@@ -175,9 +182,9 @@
   --amber-50: 252 246 228;
   --amber-100: 249 238 209;
   --amber-200: 243 224 180;
-  --amber-300: 154 106 16;
-  --amber-400: 150 101 15;
-  --amber-450: 160 107 16;
+  --amber-300: 125 84 10;
+  --amber-400: 133 87 7;
+  --amber-450: 214 150 44;
   --amber-500: 190 128 26;
   --amber-600: 176 118 19;
   --amber-700: 143 95 12;
@@ -201,8 +208,8 @@
   --yellow-50: 253 249 231;
   --yellow-100: 250 241 199;
   --yellow-200: 242 224 158;
-  --yellow-300: 138 93 10;
-  --yellow-400: 161 98 7;
+  --yellow-300: 120 72 6;
+  --yellow-400: 130 79 6;
   --yellow-500: 180 130 20;
   --yellow-600: 150 100 10;
   --yellow-700: 120 80 10;
@@ -245,6 +252,14 @@
   --blue-800: 120 160 210;
   --blue-900: 90 138 200;
   --blue-950: 224 236 250;
+
+  /* Azul cielo: tinta oscura sobre papel (los tonos por defecto son ilegibles aquí) */
+  --sky-300: 10 70 108;
+  --sky-400: 12 76 116;
+  --sky-500: 14 84 126;
+  --sky-600: 8 58 88;
+  --sky-700: 6 48 72;
+  --sky-800: 5 38 58;
 
   --indigo-50: 237 238 251;
   --indigo-100: 230 231 250;
@@ -351,4 +366,18 @@ body {
   footer {
     transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
   }
+}
+
+/* Navegación con teclado (Tab): foco visible en toda la app.
+   La segunda regla contrarresta `focus:outline-none` de Tailwind (misma
+   especificidad, gana por orden) para que el foco por teclado nunca quede
+   invisible; con ratón (:focus sin :focus-visible) el outline no se muestra. */
+:focus-visible {
+  outline: 2px solid rgb(var(--amber-400));
+  outline-offset: 2px;
+}
+
+.focus\:outline-none:focus-visible {
+  outline: 2px solid rgb(var(--amber-400));
+  outline-offset: 2px;
 }

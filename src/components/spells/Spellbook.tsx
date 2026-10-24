@@ -241,7 +241,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
               <button
                 onClick={() => handleDelete(spell.id)}
                 className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
-                title="Eliminar de la biblioteca"
+                title="Eliminar de la biblioteca" aria-label="Eliminar de la biblioteca"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -387,7 +387,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
                 >
                   Crear Hechizo
                 </button>

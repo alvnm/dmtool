@@ -219,7 +219,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               <div className="grid grid-cols-6 gap-1 text-center bg-dungeon-950 p-2 rounded-lg border border-dungeon-800 my-3">
                 {Object.entries(m.stats).map(([statKey, val]) => (
                   <div key={statKey}>
-                    <span className="text-[9px] uppercase font-bold text-amber-500/80">{statKey}</span>
+                    <span className="text-[9px] uppercase font-bold text-amber-400">{statKey}</span>
                     <p className="text-xs font-bold text-slate-200">{val}</p>
                     <span className="text-[10px] text-slate-400">{formatMod(val)}</span>
                   </div>
@@ -228,7 +228,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
               {/* Actions Preview */}
               <div className="space-y-2 mt-3 text-xs text-slate-300">
-                <h4 className="font-bold text-amber-400/90 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
                   Rasgos
                 </h4>
                 {m.traits.length > 0 ? (
@@ -244,7 +244,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               </div>
 
               <div className="space-y-2 mt-3 text-xs text-slate-300">
-                <h4 className="font-bold text-amber-400/90 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
                   Acciones
                 </h4>
                 {m.actions.slice(0, 2).map((act, idx) => (
@@ -269,7 +269,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               <button
                 onClick={() => handleDelete(m.id)}
                 className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
-                title="Eliminar de la lista"
+                title="Eliminar de la lista" aria-label="Eliminar de la lista"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -440,7 +440,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
                 >
                   Guardar Monstruo
                 </button>

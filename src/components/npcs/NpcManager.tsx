@@ -258,14 +258,14 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
                 <button
                   onClick={() => handleOpenEdit(npc)}
                   className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition"
-                  title="Editar NPC"
+                  title="Editar NPC" aria-label="Editar NPC"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(npc.id)}
                   className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition"
-                  title="Eliminar NPC"
+                  title="Eliminar NPC" aria-label="Eliminar NPC"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -388,7 +388,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
                 >
                   {editingNpc ? 'Guardar Cambios' : 'Crear NPC'}
                 </button>

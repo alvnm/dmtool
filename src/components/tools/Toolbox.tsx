@@ -231,7 +231,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                     />
                     <button
                       type="submit"
-                      className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-3 py-2 rounded-lg transition"
+                      className="bg-amber-500 hover:bg-amber-450 text-slate-950 font-bold text-sm px-3 py-2 rounded-lg transition"
                     >
                       Tirar
                     </button>

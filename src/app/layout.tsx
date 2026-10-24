@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+// URL canónica absoluta: en Vercel se usa la del despliegue (VERCEL_URL) si no
+// hay dominio configurado, para que og:image sea una URL absoluta válida.
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 
 const TITLE = 'DM Companion | Asistente de Dungeon Master para D&D 5e';
 const DESCRIPTION =
@@ -37,11 +41,20 @@ export const metadata: Metadata = {
     siteName: 'DM Companion',
     title: TITLE,
     description: DESCRIPTION,
+    images: [
+      {
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'DM Companion — Asistente de Dungeon Master para D&D 5e',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: TITLE,
     description: DESCRIPTION,
+    images: ['/opengraph-image.png'],
   },
   robots: { index: true, follow: true },
   alternates: { canonical: '/' },
@@ -57,10 +70,16 @@ export const viewport: Viewport = {
 };
 
 // Restaura el tema elegido por el DM antes del primer pintado (sin parpadeo).
+// Respeta preferencia del sistema (prefers-color-scheme) si no hay valor explícito en localStorage.
 const themeInitScript = `
 try {
   var t = window.localStorage.getItem('dm-theme');
-  document.documentElement.dataset.theme = t === 'parchment' ? 'parchment' : 'dungeon';
+  if (t === 'parchment' || t === 'dungeon') {
+    document.documentElement.dataset.theme = t;
+  } else {
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = prefersDark ? 'dungeon' : 'parchment';
+  }
 } catch (e) {
   document.documentElement.dataset.theme = 'dungeon';
 }

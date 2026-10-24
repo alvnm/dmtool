@@ -157,21 +157,21 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
                 <button
                   onClick={() => handleOpenEdit(n)}
                   className="p-1 text-slate-500 hover:text-amber-400 rounded transition"
-                  title="Editar nota"
+                  title="Editar nota" aria-label="Editar nota"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => togglePin(n.id)}
                   className={`p-1 rounded text-xs transition ${n.pinned ? 'text-amber-400' : 'text-slate-500 hover:text-slate-300'}`}
-                  title={n.pinned ? 'Desfijar' : 'Fijar nota'}
+                  title={n.pinned ? 'Desfijar' : 'Fijar nota'} aria-label={n.pinned ? 'Desfijar nota' : 'Fijar nota'}
                 >
                   <Pin className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDelete(n.id)}
                   className="p-1 text-slate-500 hover:text-red-400 rounded"
-                  title="Eliminar nota"
+                  title="Eliminar nota" aria-label="Eliminar nota"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -259,7 +259,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
                 >
                   {editingNoteId ? 'Actualizar Nota' : 'Guardar Nota'}
                 </button>

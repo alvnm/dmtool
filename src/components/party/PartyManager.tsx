@@ -172,7 +172,7 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
           </p>
           <button
             onClick={openAdd}
-            className="mt-4 bg-amber-500 text-slate-950 px-4 py-2 rounded-lg font-medium text-sm hover:bg-amber-400 transition"
+            className="mt-4 bg-amber-500 text-slate-950 px-4 py-2 rounded-lg font-medium text-sm hover:bg-amber-450 transition"
           >
             Añadir PJ
           </button>
@@ -206,14 +206,14 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                       <button
                         onClick={() => openEdit(m)}
                         className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition"
-                        title="Editar ficha"
+                        title="Editar ficha" aria-label="Editar ficha"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(m.id)}
                         className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
-                        title="Eliminar del grupo"
+                        title="Eliminar del grupo" aria-label="Eliminar del grupo"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -396,7 +396,7 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition min-h-[42px]"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition min-h-[42px]"
                 >
                   {editingId ? 'Guardar cambios' : 'Añadir PJ'}
                 </button>

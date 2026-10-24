@@ -1,0 +1,127 @@
+<!doctype html>
+<!--
+  Fuente de la miniatura Open Graph / Twitter (public/opengraph-image.png).
+
+  ¿Por qué estática? `next/og` (Next 14.2) no puede importarse en Windows:
+  `path.join(import.meta.url, ...)` rompe la URL file:// de sus WASM/fuentes y
+  `next build` falla al prerenderizar /opengraph-image. Esta página replica el
+  mismo diseño y se rasteriza con Chrome headless, así el build pasa en
+  cualquier plataforma y la vista previa es idéntica en todos lados.
+
+  Regenerar (1200×630) tras cambiar este archivo:
+
+    "/c/Program Files/Google/Chrome/Application/chrome.exe" \
+      --headless=new --disable-gpu --hide-scrollbars \
+      --allow-file-access-from-files --force-device-scale-factor=1 \
+      --window-size=1200,630 \
+      --screenshot="$(pwd)/public/opengraph-image.png" \
+      "file:///$(pwd)/scripts/og-image.html"
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>DM Companion — vista previa</title>
+<style>
+  @font-face { font-family: 'Cinzel'; src: url('../src/app/fonts/Cinzel-Bold.ttf') format('truetype'); font-weight: 700; }
+  @font-face { font-family: 'Inter'; src: url('../src/app/fonts/Inter-Regular.ttf') format('truetype'); font-weight: 400; }
+  @font-face { font-family: 'Inter'; src: url('../src/app/fonts/Inter-Bold.ttf') format('truetype'); font-weight: 700; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 64px 72px;
+    background-color: #0b0c10;
+    background-image:
+      radial-gradient(circle at 82% 18%, rgba(245, 158, 11, 0.20), transparent 55%),
+      radial-gradient(circle at 10% 90%, rgba(217, 119, 6, 0.16), transparent 50%);
+    color: #f1f5f9;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .brand { display: flex; align-items: center; gap: 24px; }
+
+  .badge {
+    width: 84px;
+    height: 84px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #f59e0b, #b45309);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    color: #0b0c10;
+    font-size: 33px;
+    font-weight: 700;
+    font-family: 'Cinzel', serif;
+  }
+
+  .title {
+    font-size: 62px;
+    line-height: 1.12;
+    font-weight: 700;
+    font-family: 'Cinzel', serif;
+    color: #fbbf24;
+    letter-spacing: 1px;
+  }
+
+  .subtitle { font-size: 26px; color: #cbd5e1; margin-top: 4px; }
+
+  .features { display: flex; flex-wrap: wrap; gap: 14px; }
+
+  .pill {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 2px solid rgba(245, 158, 11, 0.45);
+    color: #fcd34d;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; }
+  .foot .left { font-size: 21px; color: #94a3b8; white-space: nowrap; }
+  .foot .right {
+    font-size: 22px;
+    font-weight: 700;
+    color: #f59e0b;
+    border-bottom: 3px solid rgba(245, 158, 11, 0.5);
+    padding-bottom: 4px;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <div class="brand">
+    <div class="badge">d20</div>
+    <div>
+      <div class="title">DM Companion</div>
+      <div class="subtitle">Asistente de Dungeon Master para D&D 5e</div>
+    </div>
+  </div>
+
+  <div class="features">
+    <div class="pill">Iniciativa</div>
+    <div class="pill">Inventario</div>
+    <div class="pill">Bestiario SRD</div>
+    <div class="pill">NPCs</div>
+    <div class="pill">Grimorio</div>
+    <div class="pill">Dados</div>
+  </div>
+
+  <div class="foot">
+    <div class="left">Combate, notas y tesoro guardados en tu dispositivo · Funciona offline</div>
+    <div class="right">Instálalo en tu tablet de DM</div>
+  </div>
+</body>
+</html>

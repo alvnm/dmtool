@@ -695,7 +695,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
           <div className="mt-4 flex justify-center gap-3">
             <button
               onClick={() => setIsImportModalOpen(true)}
-              className="bg-amber-500 text-slate-950 px-4 py-2 rounded-lg font-medium text-sm hover:bg-amber-400 transition"
+              className="bg-amber-500 text-slate-950 px-4 py-2 rounded-lg font-medium text-sm hover:bg-amber-450 transition"
             >
               Importar del Compendio
             </button>
@@ -805,7 +805,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                             setHpModalAmount('');
                           }}
                           className="flex items-center gap-1 text-red-400 hover:text-red-300 hover:underline transition"
-                          title="Hacer clic para abrir la calculadora de daño/curación"
+                          title="Hacer clic para abrir la calculadora de daño/curación" aria-label="Abrir calculadora de daño y curación"
                         >
                           <Heart className="w-3.5 h-3.5 fill-red-400/20" /> HP:
                         </button>
@@ -990,7 +990,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                       <button
                         onClick={() => handleRemoveCombatant(c.id)}
                         className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition shrink-0"
-                        title="Eliminar de la iniciativa"
+                        title="Eliminar de la iniciativa" aria-label="Eliminar de la iniciativa"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -1093,7 +1093,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
                 >
                   Agregar Combatiente
                 </button>
@@ -1117,7 +1117,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   setIsImportModalOpen(false);
                   setImportSearchTerm('');
                 }}
-                className="text-slate-500 hover:text-slate-300 text-sm"
+                className="text-slate-500 hover:text-slate-300 text-sm" aria-label="Cerrar importación"
               >
                 ✕
               </button>
@@ -1138,7 +1138,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                 <button
                   type="button"
                   onClick={() => setImportSearchTerm('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300" aria-label="Borrar búsqueda"
                 >
                   ✕
                 </button>
@@ -1272,7 +1272,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
               <button
                 type="button"
                 onClick={() => setHpModalCombatant(null)}
-                className="text-slate-400 hover:text-slate-200 text-lg p-1"
+                className="text-slate-400 hover:text-slate-200 text-lg p-1" aria-label="Cerrar"
               >
                 ✕
               </button>
@@ -1334,7 +1334,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   />
                 </div>
                 {hpModalTab === 'damage' && hpModalCombatant.hp_temp ? (
-                  <p className="text-[11px] text-sky-400/90 mt-1">
+                  <p className="text-[11px] text-sky-400 mt-1">
                     ℹ️ Los primeros {hpModalCombatant.hp_temp} de daño se absorberán con los PV temporales.
                   </p>
                 ) : null}
@@ -1370,7 +1370,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                       ? 'bg-red-600 hover:bg-red-500 text-white'
                       : hpModalTab === 'heal'
                         ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                        : 'bg-sky-600 hover:bg-sky-500 text-white'
+                        : 'bg-sky-700 hover:bg-sky-800 text-white'
                   }`}
                 >
                   {hpModalTab === 'damage' && 'Aplicar Daño'}

@@ -14,18 +14,30 @@ import { sortCombatants, monsterToCombatant } from '@/lib/combat';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useI18n } from '@/lib/i18n';
 import { Globe } from 'lucide-react';
-import { Toolbox } from '@/components/tools/Toolbox';
+import { useToast } from '@/components/Toast';
+import dynamic from 'next/dynamic';
+import { Loader2 } from 'lucide-react';
 import { Monster } from '@/types';
 import { DmDashboard } from '@/components/dashboard/DmDashboard';
-import { InitiativeTracker } from '@/components/initiative/InitiativeTracker';
-import { InventoryTracker } from '@/components/inventory/InventoryTracker';
-import { MonsterCompendium } from '@/components/monsters/MonsterCompendium';
-import { NpcManager } from '@/components/npcs/NpcManager';
-import { Spellbook } from '@/components/spells/Spellbook';
-import { PartyManager } from '@/components/party/PartyManager';
-import { TreasureGenerator } from '@/components/treasure/TreasureGenerator';
-import { SettingsModal } from '@/components/settings/SettingsModal';
-import { CommandPalette, type PaletteTabId } from '@/components/CommandPalette';
+import type { PaletteTabId } from '@/components/CommandPalette';
+
+const TabLoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center min-h-[350px] gap-3 text-slate-400">
+    <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+    <span className="text-xs uppercase tracking-wider font-semibold">Cargando herramienta...</span>
+  </div>
+);
+
+const InitiativeTracker = dynamic(() => import('@/components/initiative/InitiativeTracker').then(m => m.InitiativeTracker), { loading: TabLoadingFallback });
+const InventoryTracker = dynamic(() => import('@/components/inventory/InventoryTracker').then(m => m.InventoryTracker), { loading: TabLoadingFallback });
+const MonsterCompendium = dynamic(() => import('@/components/monsters/MonsterCompendium').then(m => m.MonsterCompendium), { loading: TabLoadingFallback });
+const NpcManager = dynamic(() => import('@/components/npcs/NpcManager').then(m => m.NpcManager), { loading: TabLoadingFallback });
+const Spellbook = dynamic(() => import('@/components/spells/Spellbook').then(m => m.Spellbook), { loading: TabLoadingFallback });
+const PartyManager = dynamic(() => import('@/components/party/PartyManager').then(m => m.PartyManager), { loading: TabLoadingFallback });
+const TreasureGenerator = dynamic(() => import('@/components/treasure/TreasureGenerator').then(m => m.TreasureGenerator), { loading: TabLoadingFallback });
+const Toolbox = dynamic(() => import('@/components/tools/Toolbox').then(m => m.Toolbox), { ssr: false });
+const SettingsModal = dynamic(() => import('@/components/settings/SettingsModal').then(m => m.SettingsModal), { ssr: false });
+const CommandPalette = dynamic(() => import('@/components/CommandPalette').then(m => m.CommandPalette), { ssr: false });
 
 export default function MainApp() {
   const { t, language, toggleLanguage } = useI18n();
@@ -46,6 +58,7 @@ export default function MainApp() {
   } = useCampaignData();
 
   const [loggingOut, setLoggingOut] = useState(false);
+  const { success, info } = useToast();
 
   // UI state
   const [focusMode, setFocusMode] = usePersistentState<boolean>('focus-mode', false);
@@ -82,6 +95,7 @@ export default function MainApp() {
         // Respaldo rápido de la campaña sin pasar por el modal.
         e.preventDefault();
         exportCampaign();
+        success('¡Respaldo JSON descargado con éxito!');
       }
     };
     window.addEventListener('keydown', onKey);
@@ -103,6 +117,7 @@ export default function MainApp() {
   const handleSendMonsterToCombat = (monster: Monster) => {
     setCombatants(sortCombatants([...combatants, monsterToCombatant(monster)]));
     setActiveTab('initiative');
+    success(`¡${monster.name} añadido a iniciativa!`);
   };
 
   const NAV_ITEMS: Array<{ id: PaletteTabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -188,7 +203,7 @@ export default function MainApp() {
               type="button"
               className="flex items-center cursor-pointer shrink-0 group rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/50"
               onClick={() => setActiveTab('dashboard')}
-              title={t('dashboard')}
+              title={t('dashboard')} aria-label={t('dashboard')}
             >
               <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-amber-500/20 border border-amber-500/30 group-hover:border-amber-400 flex items-center justify-center bg-dungeon-950 transition">
                 <img src="/icon-192.png" alt="DM Companion" className="w-full h-full object-cover group-hover:scale-105 transition" />
@@ -232,7 +247,7 @@ export default function MainApp() {
               <button
               onClick={exportCampaign}
               className="hidden sm:flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
-              title={t("downloadTooltip")}
+              title={t("downloadTooltip")} aria-label={t("downloadTooltip")}
               >
                 <Download className="w-3.5 h-3.5" />
               </button>
@@ -296,7 +311,7 @@ export default function MainApp() {
           </div>
 
           {/* Mobile Nav Tabs */}
-          <div className="md:hidden flex items-center overflow-x-auto py-2 border-t border-dungeon-800 space-x-1 scrollbar-none px-1">
+          <div className="md:hidden flex items-center overflow-x-auto py-2 border-t border-dungeon-800 space-x-1 scrollbar-none px-1 touch-pan-x overscroll-x-contain">
             {NAV_ITEMS.map(item => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -333,13 +348,13 @@ export default function MainApp() {
             <div className="flex items-center gap-2">
               <button
                 onClick={exportCampaign}
-                className="bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs hover:bg-amber-400 transition"
+                className="bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs hover:bg-amber-450 transition"
               >
                 Descargar Respaldo JSON
               </button>
               <button
                 onClick={dismissStorageAlert}
-                className="text-amber-400 hover:text-amber-200 font-bold px-2 py-1"
+                className="text-amber-400 hover:text-amber-200 font-bold px-2 py-1" aria-label="Descartar aviso"
               >
                 ✕
               </button>
@@ -374,14 +389,14 @@ export default function MainApp() {
           <button
             onClick={() => setPaletteOpen(true)}
             className="p-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-dungeon-800 transition min-w-[40px] min-h-[40px] flex items-center justify-center"
-            title="Buscador rápido (Ctrl + K)"
+            title="Buscador rápido (Ctrl + K)" aria-label="Buscador rápido (Ctrl + K)"
           >
             <Search className="w-4 h-4" />
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
             className="p-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-dungeon-800 transition min-w-[40px] min-h-[40px] flex items-center justify-center"
-            title="Ajustes"
+            title="Ajustes" aria-label="Ajustes"
           >
             <Settings className="w-4 h-4" />
           </button>

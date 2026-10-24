@@ -36,6 +36,10 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // elimina el banner X-Powered-By: Next.js
+  compress: true, // compresión Gzip / Brotli
+
+  // Optimización de importación de paquetes para reducir el bundle JS
+  optimizePackageImports: ['lucide-react', 'framer-motion'],
 
   // Acciones de servidor: solo desde el propio origen.
   experimental: {

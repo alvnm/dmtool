@@ -269,14 +269,14 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
                 <button
                   onClick={() => handleOpenEdit(item)}
                   className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition"
-                  title="Editar Objeto"
+                  title="Editar Objeto" aria-label="Editar Objeto"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDeleteItem(item.id)}
                   className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition"
-                  title="Eliminar Objeto"
+                  title="Eliminar Objeto" aria-label="Eliminar Objeto"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -391,7 +391,7 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 transition"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
                 >
                   {editingItem ? 'Guardar Cambios' : 'Crear Objeto'}
                 </button>

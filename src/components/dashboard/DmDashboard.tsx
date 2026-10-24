@@ -128,7 +128,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
                 {card.title}
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5">{card.detail}</p>
-              <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-500/80 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition">
+              <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition">
                 {card.cta} <ArrowRight className="w-3 h-3" />
               </span>
             </motion.button>
@@ -163,7 +163,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
           </div>
           <button
             onClick={() => onSelectTab('initiative')}
-            className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs shadow transition"
+            className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-450 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs shadow transition"
           >
             <Swords className="w-3.5 h-3.5" />
             {combatants.length > 0 ? 'Ir al Combate' : 'Iniciar Encuentro'}

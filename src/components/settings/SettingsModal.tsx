@@ -255,7 +255,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <button
                         type="submit"
                         disabled={checking || !url.trim() || !key.trim()}
-                        className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-bold px-4 py-2.5 rounded-lg transition disabled:opacity-50 min-h-[44px]"
+                        className="flex items-center gap-2 bg-amber-500 hover:bg-amber-450 text-slate-950 text-sm font-bold px-4 py-2.5 rounded-lg transition disabled:opacity-50 min-h-[44px]"
                       >
                         {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                         Comprobar y guardar
