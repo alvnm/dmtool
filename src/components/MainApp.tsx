@@ -62,6 +62,7 @@ export default function MainApp() {
     spells, setSpells,
     notes, setNotes,
     party, setParty,
+    auditLog, setAuditLog, logEvent,
     supabaseActive, userEmail,
     initialLoading,
     syncStatus, syncError,
@@ -166,6 +167,7 @@ export default function MainApp() {
           <InventoryTracker
             items={items}
             onUpdateItems={setItems}
+            onLogEvent={logEvent}
             assigneeSuggestions={[
               'Bolsa General',
               ...party.map(p => p.name),
@@ -196,6 +198,7 @@ export default function MainApp() {
             onUpdateCombatants={setCombatants}
             items={items}
             onUpdateItems={setItems}
+            onLogEvent={logEvent}
           />
         );
       case 'treasure':
@@ -215,6 +218,7 @@ export default function MainApp() {
             spells={spells}
             notes={notes}
             party={party}
+            auditLog={auditLog}
             highlightNoteId={highlightNoteId}
             onUpdateNotes={setNotes}
             onSelectTab={setActiveTab}

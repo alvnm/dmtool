@@ -96,7 +96,20 @@ export interface InventoryItem {
   value_gp: number;
   assigned_to: string;
   description: string;
+  quantity?: number;
+  equipped?: boolean;
+  attuned?: boolean;
   created_at?: string;
+  last_modified_by?: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  author: string;
+  entityType: 'item' | 'combatant' | 'party' | 'note';
+  action: 'create' | 'update' | 'delete' | 'transfer';
+  summary: string;
 }
 
 export interface Combatant {

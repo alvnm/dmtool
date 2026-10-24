@@ -33,6 +33,7 @@ import {
   INITIAL_SPELLS,
 } from '@/lib/mockData';
 import {
+  AuditLogEntry,
   Combatant,
   DMNote,
   InventoryItem,
@@ -75,6 +76,9 @@ export interface CampaignDataApi {
   setNotes: React.Dispatch<React.SetStateAction<DMNote[]>>;
   party: PartyMember[];
   setParty: React.Dispatch<React.SetStateAction<PartyMember[]>>;
+  auditLog: AuditLogEntry[];
+  setAuditLog: React.Dispatch<React.SetStateAction<AuditLogEntry[]>>;
+  logEvent: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
   supabaseActive: boolean;
   userEmail: string | null;
   /** Descarga inicial (compendio SRD + nube) todavía en curso. */
@@ -116,6 +120,28 @@ export function useCampaignData(): CampaignDataApi {
   const [spells, setSpells] = usePersistentState<Spell[]>(STORAGE_KEYS.spells, INITIAL_SPELLS);
   const [notes, setNotes] = usePersistentState<DMNote[]>(STORAGE_KEYS.notes, INITIAL_NOTES);
   const [party, setParty] = usePersistentState<PartyMember[]>(STORAGE_KEYS.party, []);
+  const [auditLog, setAuditLog] = usePersistentState<AuditLogEntry[]>(STORAGE_KEYS.auditLog, [
+    {
+      id: 'init-1',
+      timestamp: new Date().toISOString(),
+      author: 'DM',
+      entityType: 'party',
+      action: 'create',
+      summary: 'Campaña iniciada en DM Companion',
+    },
+  ]);
+
+  const logEvent = useCallback(
+    (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => {
+      const newEntry: AuditLogEntry = {
+        ...entry,
+        id: String(Date.now() + Math.random()),
+        timestamp: new Date().toISOString(),
+      };
+      setAuditLog((prev) => [newEntry, ...prev.slice(0, 99)]);
+    },
+    [setAuditLog]
+  );
 
   // Escuchar errores de cuota de localStorage.
   useEffect(() => {
@@ -243,6 +269,7 @@ export function useCampaignData(): CampaignDataApi {
         spells,
         notes,
         party,
+        auditLog,
         activeTab,
         turnIndex: readStorage<number>(STORAGE_KEYS.turnIndex, 0),
         round: readStorage<number>(STORAGE_KEYS.round, 1),
@@ -261,6 +288,7 @@ export function useCampaignData(): CampaignDataApi {
       setNpcs(data.npcs);
       setNotes(data.notes);
       if (Array.isArray(data.party)) setParty(data.party as PartyMember[]);
+      if (Array.isArray(data.auditLog)) setAuditLog(data.auditLog);
       // Bestiario/grimorio: si el archivo los trae, mandan sobre lo actual
       // (una importación es un restablecimiento), pero nunca dejan la lista
       // vacía si el archivo no los incluía.
@@ -293,6 +321,9 @@ export function useCampaignData(): CampaignDataApi {
     setNotes,
     party,
     setParty,
+    auditLog,
+    setAuditLog,
+    logEvent,
     supabaseActive,
     userEmail,
     initialLoading,

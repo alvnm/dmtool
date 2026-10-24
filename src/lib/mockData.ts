@@ -156,7 +156,11 @@ export const INITIAL_ITEMS: InventoryItem[] = [
     weight: 0.5,
     value_gp: 50,
     assigned_to: 'Bolsa General',
-    description: 'Un líquido rojo brillante con olor a canela. Restaura 2d4+2 HP.'
+    description: 'Un líquido rojo brillante con olor a canela. Restaura 2d4+2 HP.',
+    quantity: 3,
+    equipped: false,
+    attuned: false,
+    last_modified_by: 'DM',
   },
   {
     id: 'item-2',
@@ -166,7 +170,11 @@ export const INITIAL_ITEMS: InventoryItem[] = [
     weight: 3,
     value_gp: 500,
     assigned_to: 'Valerius',
-    description: 'Una hoja de acero mithril forjada por enanos con runas grabadas. +1 al ataque y daño.'
+    description: 'Una hoja de acero mithril forjada por enanos con runas grabadas. +1 al ataque y daño.',
+    quantity: 1,
+    equipped: true,
+    attuned: false,
+    last_modified_by: 'Valerius',
   },
   {
     id: 'item-3',
@@ -176,7 +184,11 @@ export const INITIAL_ITEMS: InventoryItem[] = [
     weight: 0.1,
     value_gp: 1500,
     assigned_to: 'Lyra',
-    description: 'Otorga +1 a la AC y a todas las tiradas de salvación mientras se lleve equipado.'
+    description: 'Otorga +1 a la AC y a todas las tiradas de salvación mientras se lleve equipado.',
+    quantity: 1,
+    equipped: true,
+    attuned: true,
+    last_modified_by: 'Lyra',
   }
 ];
 
