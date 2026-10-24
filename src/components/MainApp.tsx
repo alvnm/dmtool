@@ -162,7 +162,19 @@ export default function MainApp() {
           />
         );
       case 'inventory':
-        return <InventoryTracker items={items} onUpdateItems={setItems} />;
+        return (
+          <InventoryTracker
+            items={items}
+            onUpdateItems={setItems}
+            assigneeSuggestions={[
+              'Bolsa General',
+              ...party.map(p => p.name),
+              ...Array.from(new Set(items.map(i => i.assigned_to))).filter(
+                a => a && a !== 'Bolsa General' && !party.some(p => p.name === a)
+              ),
+            ]}
+          />
+        );
       case 'monsters':
         return (
           <MonsterCompendium
@@ -182,6 +194,8 @@ export default function MainApp() {
             onUpdateMembers={setParty}
             combatants={combatants}
             onUpdateCombatants={setCombatants}
+            items={items}
+            onUpdateItems={setItems}
           />
         );
       case 'treasure':

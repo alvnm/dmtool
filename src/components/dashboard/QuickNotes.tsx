@@ -228,6 +228,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
                 <input
                   type="text"
                   required
+                  maxLength={200}
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Ej: Pista de la biblioteca / Contraseña del templo"
@@ -253,6 +254,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
                 <textarea
                   rows={4}
                   required
+                  maxLength={20000}
                   value={content}
                   onChange={e => setContent(e.target.value)}
                   placeholder="Detalles importantes para la sesión..."

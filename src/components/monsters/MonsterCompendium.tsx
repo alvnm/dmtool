@@ -10,7 +10,7 @@ import { useToast } from '@/components/Toast';
 import { EmptyState } from '@/components/EmptyState';
 import { 
   Skull, Plus, Search, Shield, Heart, Zap, 
-  Swords, Trash2, Download, Upload
+  Swords, Trash2, Download, Upload, Pencil
 } from 'lucide-react';
 
 interface MonsterCompendiumProps {
@@ -28,6 +28,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCr, setSelectedCr] = useState<string>('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedMonsterForView, setSelectedMonsterForView] = useState<Monster | null>(null);
   // Con el bestiario SRD completo (cientos de fichas) se muestran de 60 en 60
   // para no montar cientos de tarjetas de golpe.
@@ -67,13 +68,13 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
   const handleSaveMonster = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const cleanName = name.trim();
+    if (!cleanName) return;
 
-    const newMonster: Monster = {
-      id: `mon-${Date.now()}`,
-      name,
+    const data = {
+      name: cleanName,
       size,
-      type,
+      type: type.trim() || 'Humanoide',
       alignment,
       ac: sb.ac,
       hp_max: sb.hp_max,
@@ -81,17 +82,48 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
       stats: sb.stats,
       cr: sb.cr,
       traits: sb.traits,
-      isCustom: true,
       legendary: sb.legendary,
       actions: sb.actions.length > 0 ? sb.actions : [
         { name: 'Ataque con Garrote', desc: '+3 al ataque, alcance 5 ft. Daño: 4 (1d6 + 1) contundente.' }
       ]
     };
 
-    onUpdateMonsters([...monsters, newMonster]);
+    if (editingId) {
+      // Se conserva el id: la fusión con la nube/local respeta lo editado.
+      onUpdateMonsters(monsters.map(m => m.id === editingId ? { ...m, ...data } : m));
+      toast.success(`Monstruo «${cleanName}» actualizado.`);
+    } else {
+      const newMonster: Monster = {
+        id: `mon-${Date.now()}`,
+        ...data,
+        isCustom: true,
+      };
+      onUpdateMonsters([...monsters, newMonster]);
+      toast.success(`Monstruo «${cleanName}» creado.`);
+    }
     setIsModalOpen(false);
-    toast.success(`Monstruo «${name}» creado.`);
     resetForm();
+  };
+
+  /** Abre el mismo formulario de creación en modo edición con los datos cargados. */
+  const openEdit = (m: Monster) => {
+    setEditingId(m.id);
+    setName(m.name);
+    setSize(m.size);
+    setType(m.type);
+    setAlignment(m.alignment);
+    setSb({
+      stats: m.stats,
+      ac: m.ac,
+      hp_max: m.hp_max,
+      speed: m.speed,
+      cr: m.cr,
+      traits: m.traits,
+      actions: m.actions,
+      legendary: m.legendary ?? [],
+    });
+    setImportMsg(null);
+    setIsModalOpen(true);
   };
 
   const resetForm = () => {
@@ -101,6 +133,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
     setAlignment('Neutral Malvado');
     setSb(defaultStatBlock());
     setImportMsg(null);
+    setEditingId(null);
   };
 
   /** Importa criaturas desde un JSON (objeto suelto, envoltorio o array). */
@@ -186,7 +219,10 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
           />
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
             className="btn btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -349,6 +385,13 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
               <div className="flex items-center gap-1">
                 <button
+                  onClick={() => openEdit(m)}
+                  className="btn btn-icon text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"
+                  title="Editar ficha" aria-label="Editar ficha"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
                   onClick={() => exportMonster(m)}
                   className="btn btn-icon text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"
                   title="Exportar ficha en JSON" aria-label="Exportar ficha en JSON"
@@ -386,7 +429,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="card p-6 max-w-4xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
-              Crear Nueva Criatura / Monstruo Personalizado
+              {editingId ? 'Editar Criatura' : 'Crear Nueva Criatura / Monstruo Personalizado'}
             </h3>
 
             <form onSubmit={handleSaveMonster} className="space-y-4">
@@ -495,7 +538,10 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               <div className="flex justify-end gap-2 pt-3 border-t border-dungeon-800">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    resetForm();
+                  }}
                   className="btn px-4 py-2 text-sm text-slate-400 hover:bg-dungeon-800"
                 >
                   Cancelar

@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, Shield, Eye, Heart, Swords, Trash2, Edit2, Skull } from 'lucide-react';
-import { Combatant, PartyMember } from '@/types';
+import { Users, Plus, Shield, Eye, Heart, Swords, Trash2, Edit2, Skull, Coins, Package } from 'lucide-react';
+import { Combatant, InventoryItem, PartyMember } from '@/types';
 import { useToast } from '@/components/Toast';
 
 /**
@@ -17,16 +17,23 @@ interface PartyManagerProps {
   onUpdateMembers: (members: PartyMember[]) => void;
   combatants: Combatant[];
   onUpdateCombatants: (combatants: Combatant[]) => void;
-}
-
-const passivePerception = (m: PartyMember) =>
+  /** Inventario de la campaña: se sincroniza al renombrar o borrar un PJ. */
+  items: InventoryItem[];
+  onUpdateItems: (items: InventoryItem[]) => void;
+}  const passivePerception = (m: PartyMember) =>
   m.passivePerception != null ? m.passivePerception : 10 + m.wisMod;
+
+/** Limita un número al rango válido; si no es numérico usa el valor por defecto. */
+const clampNum = (v: number, min: number, max: number, fallback: number) =>
+  Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback;
 
 export const PartyManager: React.FC<PartyManagerProps> = ({
   members,
   onUpdateMembers,
   combatants,
   onUpdateCombatants,
+  items,
+  onUpdateItems,
 }) => {
   const toast = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,43 +80,60 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-    const passive = passiveInput.trim() === '' ? null : Number(passiveInput);
+    const cleanName = name.trim();
+    if (!cleanName) return;
+    const passiveRaw = passiveInput.trim() === '' ? null : Number(passiveInput);
+    const passive = passiveRaw === null ? null : clampNum(passiveRaw, 0, 40, 10 + wisMod);
+    const safeLevel = clampNum(level, 1, 20, 1);
+    const safeAc = clampNum(ac, 0, 30, 10);
+    const safeMaxHp = clampNum(maxHp, 1, 999, 1);
+    const safeWis = clampNum(wisMod, -5, 10, 0);
+    const safeInitiative = clampNum(initiative, -10, 30, 10);
 
     if (editingId) {
+      const target = members.find(m => m.id === editingId);
       onUpdateMembers(
         members.map(m =>
           m.id === editingId
             ? {
                 ...m,
-                name,
+                name: cleanName,
                 className: className.trim() || 'Aventurero',
-                level,
-                ac,
-                maxHp,
-                wisMod,
+                level: safeLevel,
+                ac: safeAc,
+                maxHp: safeMaxHp,
+                wisMod: safeWis,
                 passivePerception: passive,
-                initiative,
+                initiative: safeInitiative,
               }
             : m
         )
       );
+      // Sincroniza el inventario: los objetos asignados le siguen al cambiar de nombre.
+      if (target && target.name !== cleanName) {
+        const renamed = items.some(i => i.assigned_to === target.name);
+        if (renamed) {
+          onUpdateItems(
+            items.map(i => i.assigned_to === target.name ? { ...i, assigned_to: cleanName } : i)
+          );
+        }
+      }
     } else {
       const member: PartyMember = {
         id: `party-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-        name,
+        name: cleanName,
         className: className.trim() || 'Aventurero',
-        level,
-        ac,
-        maxHp,
-        wisMod,
+        level: safeLevel,
+        ac: safeAc,
+        maxHp: safeMaxHp,
+        wisMod: safeWis,
         passivePerception: passive,
-        initiative,
+        initiative: safeInitiative,
       };
       onUpdateMembers([...members, member]);
     }
     setIsModalOpen(false);
-    toast.success(editingId ? `Ficha de ${name} actualizada.` : `Ficha de ${name} creada.`);
+    toast.success(editingId ? `Ficha de ${cleanName} actualizada.` : `Ficha de ${cleanName} creada.`);
     resetForm();
   };
 
@@ -120,6 +144,13 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
     onUpdateMembers(members.filter(m => m.id !== id));
     // Si estaba en combate, también sale de la iniciativa.
     onUpdateCombatants(combatants.filter(c => c.id !== id));
+    // Sus objetos pasan a la Bolsa General en lugar de quedarse huérfanos.
+    const carriesItems = items.some(i => i.assigned_to === target.name);
+    if (carriesItems) {
+      onUpdateItems(
+        items.map(i => i.assigned_to === target.name ? { ...i, assigned_to: 'Bolsa General' } : i)
+      );
+    }
     toast.success(`${target.name} eliminado del grupo.`);
   };
 
@@ -189,6 +220,8 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
           <AnimatePresence initial={false}>
             {members.map(m => {
               const live = inCombat(m);
+              const carriedItems = items.filter(i => i.assigned_to === m.name);
+              const carriedGold = carriedItems.reduce((sum, i) => sum + (Number(i.value_gp) || 0), 0);
               const hpPercent = live
                 ? Math.max(0, Math.min(100, Math.round((live.hp_current / live.hp_max) * 100)))
                 : 100;
@@ -244,6 +277,21 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                       <p className="text-[9px] uppercase tracking-wider text-slate-500">HP máx</p>
                       <p className="font-bold text-slate-100">{m.maxHp}</p>
                     </div>
+                  </div>
+
+                  {/* Inventario portado: sincronizado con la sección Inventario */}
+                  <div className="flex items-center justify-between text-micro bg-dungeon-950 border border-dungeon-800 rounded-lg px-2.5 py-1.5">
+                    <span className="flex items-center gap-1.5 text-slate-400">
+                      <Package className="w-3.5 h-3.5 text-amber-400" />
+                      {carriedItems.length} objeto{carriedItems.length === 1 ? '' : 's'}
+                    </span>
+                    <span
+                      className="flex items-center gap-1.5 font-semibold text-yellow-400"
+                      title="Valor total de los objetos asignados a este personaje"
+                    >
+                      <Coins className="w-3.5 h-3.5" />
+                      {carriedGold.toLocaleString()} PO
+                    </span>
                   </div>
 
                   {/* HP en vivo si está en combate */}
@@ -339,6 +387,9 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                   <label className="label">CA</label>
                   <input
                     type="number"
+                    required
+                    min={0}
+                    max={30}
                     value={ac}
                     onChange={e => setAc(Number(e.target.value))}
                     className="input min-h-[42px]"
@@ -372,6 +423,8 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                   <label className="label">Percep. pasiva*</label>
                   <input
                     type="number"
+                    min={0}
+                    max={40}
                     value={passiveInput}
                     onChange={e => setPassiveInput(e.target.value)}
                     placeholder={String(10 + wisMod)}
@@ -382,6 +435,8 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                   <label className="label">Iniciativa</label>
                   <input
                     type="number"
+                    min={-10}
+                    max={30}
                     value={initiative}
                     onChange={e => setInitiative(Number(e.target.value))}
                     className="input min-h-[42px]"

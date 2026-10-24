@@ -13,11 +13,14 @@ import {
 interface InventoryTrackerProps {
   items: InventoryItem[];
   onUpdateItems: (items: InventoryItem[]) => void;
+  /** Nombres sugeridos para «Asignado a»: personajes del grupo + destinos ya usados. */
+  assigneeSuggestions?: string[];
 }
 
 export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
   items,
   onUpdateItems,
+  assigneeSuggestions = [],
 }) => {
   const toast = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -396,8 +399,18 @@ export const InventoryTracker: React.FC<InventoryTrackerProps> = ({
                   value={assignedTo}
                   onChange={e => setAssignedTo(e.target.value)}
                   placeholder="Ej: Bolsa General / Valerius / Lyra"
+                  list="assignee-options"
+                  maxLength={80}
                   className="input"
                 />
+                <datalist id="assignee-options">
+                  {assigneeSuggestions.map(option => (
+                    <option key={option} value={option} />
+                  ))}
+                </datalist>
+                <p className="text-micro text-slate-500 mt-1">
+                  Los personajes del grupo aparecen como sugerencias.
+                </p>
               </div>
 
               <div>

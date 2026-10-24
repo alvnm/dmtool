@@ -326,22 +326,32 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
   const handleAddCustom = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;      const newCombatant: Combatant = {
-        id: `comb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      name: newName,
-      initiative: Number(newInitiative),
-      hp_current: Number(newHp),
-      hp_max: Number(newHp),
-      ac: Number(newAc),
+    const cleanName = newName.trim();
+    if (!cleanName) return;
+    // Rangos válidos de 5e: protege ante campos vacíos o no numéricos.
+    const clampNum = (v: number, min: number, max: number, fallback: number) =>
+      Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback;
+    const safeInitiative = clampNum(Number(newInitiative), -10, 30, 10);
+    const safeHp = clampNum(Number(newHp), 1, 999, 10);
+    const safeAc = clampNum(Number(newAc), 0, 30, 10);
+    const safeDex = clampNum(Number(newDexMod), -5, 10, 0);
+
+    const newCombatant: Combatant = {
+      id: `comb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: cleanName,
+      initiative: safeInitiative,
+      hp_current: safeHp,
+      hp_max: safeHp,
+      ac: safeAc,
       is_player: isPlayer,
       conditions: [],
       condition_rounds: {},
-      ...(isPlayer ? {} : { dex_mod: Number(newDexMod) || 0 }),
+      ...(isPlayer ? {} : { dex_mod: safeDex }),
     };
 
     const updated = sortCombatants([...combatants, newCombatant]);
     onUpdateCombatants(updated);
-    toast.success(`${newName} añadido a la escena.`);
+    toast.success(`${cleanName} añadido a la escena.`);
     setIsAddModalOpen(false);
     resetForm();
   };

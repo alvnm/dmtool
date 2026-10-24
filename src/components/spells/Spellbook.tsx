@@ -6,7 +6,7 @@ import { useToast } from '@/components/Toast';
 import { EmptyState } from '@/components/EmptyState';
 import { 
   BookOpen, Plus, Search, Sparkles, Wand2, 
-  Trash2, Clock, Target, Layers
+  Trash2, Clock, Target, Layers, Pencil
 } from 'lucide-react';
 
 interface SpellbookProps {
@@ -23,6 +23,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
   const [selectedLevel, setSelectedLevel] = useState<string>('Todos');
   const [selectedSchool, setSelectedSchool] = useState<string>('Todas');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   // El grimorio SRD completo (~400 conjuros) se muestra de 60 en 60 para no
   // montar cientos de tarjetas de golpe.
   const [visibleCount, setVisibleCount] = useState(60);
@@ -79,28 +80,54 @@ export const Spellbook: React.FC<SpellbookProps> = ({
 
   const handleSaveSpell = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const cleanName = name.trim();
+    if (!cleanName) return;
 
     const classesArray = selectedClassesStr.split(',').map(c => c.trim()).filter(Boolean);
+    const safeLevel = Math.min(9, Math.max(0, Math.round(Number(level) || 0)));
 
-    const newSpell: Spell = {
-      id: `sp-${Date.now()}`,
-      name,
-      level: Number(level),
+    const data = {
+      name: cleanName,
+      level: safeLevel,
       school,
-      casting_time: castingTime,
-      range,
-      components,
-      duration,
-      description,
+      casting_time: castingTime.trim() || '1 Acción',
+      range: range.trim(),
+      components: components.trim(),
+      duration: duration.trim(),
+      description: description.trim(),
       classes: classesArray,
       isCustom: true,
     };
 
-    onUpdateSpells([...spells, newSpell]);
+    if (editingId) {
+      // Id conservado: la edición sobrevive a la fusión con la nube/local.
+      onUpdateSpells(spells.map(s => s.id === editingId ? { ...s, ...data } : s));
+      toast.success(`Hechizo «${cleanName}» actualizado.`);
+    } else {
+      const newSpell: Spell = {
+        id: `sp-${Date.now()}`,
+        ...data,
+      };
+      onUpdateSpells([...spells, newSpell]);
+      toast.success(`Hechizo «${cleanName}» añadido al grimorio.`);
+    }
     setIsModalOpen(false);
-    toast.success(`Hechizo «${name}» añadido al grimorio.`);
     resetForm();
+  };
+
+  /** Abre el formulario de creación en modo edición con los datos cargados. */
+  const openEdit = (s: Spell) => {
+    setEditingId(s.id);
+    setName(s.name);
+    setLevel(s.level);
+    setSchool(s.school);
+    setCastingTime(s.casting_time);
+    setRange(s.range);
+    setComponents(s.components);
+    setDuration(s.duration);
+    setDescription(s.description);
+    setSelectedClassesStr(s.classes.join(', '));
+    setIsModalOpen(true);
   };
 
   const resetForm = () => {
@@ -113,6 +140,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
     setDuration('Instantáneo');
     setDescription('');
     setSelectedClassesStr('Mago, Hechicero');
+    setEditingId(null);
   };
 
   const handleDelete = (id: string) => {
@@ -185,7 +213,10 @@ export const Spellbook: React.FC<SpellbookProps> = ({
           </select>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
             className="btn btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -264,6 +295,13 @@ export const Spellbook: React.FC<SpellbookProps> = ({
               </div>
 
               <button
+                onClick={() => openEdit(spell)}
+                className="btn btn-icon text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"
+                title="Editar hechizo" aria-label="Editar hechizo"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <button
                 onClick={() => handleDelete(spell.id)}
                 className="btn btn-icon text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                 title="Eliminar de la biblioteca" aria-label="Eliminar de la biblioteca"
@@ -293,7 +331,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="card p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
-              Registrar Nuevo Hechizo / Conjuro
+              {editingId ? 'Editar Hechizo' : 'Registrar Nuevo Hechizo / Conjuro'}
             </h3>
 
             <form onSubmit={handleSaveSpell} className="space-y-3">
@@ -406,7 +444,10 @@ export const Spellbook: React.FC<SpellbookProps> = ({
               <div className="flex justify-end gap-2 pt-4 border-t border-dungeon-800">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    resetForm();
+                  }}
                   className="btn px-4 py-2 text-sm text-slate-400 hover:bg-dungeon-800"
                 >
                   Cancelar
