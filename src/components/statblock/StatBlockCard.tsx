@@ -43,7 +43,7 @@ export const StatBlockCard: React.FC<StatBlockCardProps> = ({
   return (
     <div className="bg-dungeon-950 border border-amber-500/30 rounded-xl p-4 shadow-inner space-y-3">
       {preview && (
-        <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-0.5">
+        <span className="inline-block text-micro font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-0.5">
           Vista previa
         </span>
       )}
@@ -53,49 +53,49 @@ export const StatBlockCard: React.FC<StatBlockCardProps> = ({
           <h4 className="text-base font-bold text-amber-400 font-serif truncate">
             {data.name || 'Sin nombre'}
           </h4>
-          {subtitle && <p className="text-[11px] text-slate-400 italic">{subtitle}</p>}
+          {subtitle && <p className="text-micro text-slate-400 italic">{subtitle}</p>}
         </div>
         {data.cr !== undefined && (
-          <span className="bg-red-950 text-red-300 border border-red-800 font-bold text-[11px] px-2 py-0.5 rounded shrink-0">
+          <span className="bg-red-950 text-red-300 border border-red-800 font-bold text-micro px-2 py-0.5 rounded shrink-0">
             CR {data.cr}
           </span>
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-center bg-dungeon-900 p-2 rounded-lg border border-dungeon-800">
+      <div className="card grid grid-cols-3 gap-2 text-center p-2">
         <div>
-          <span className="text-[10px] text-slate-500 uppercase font-semibold block">CA</span>
+          <span className="text-micro text-slate-500 uppercase font-semibold block">CA</span>
           <span className="text-sm font-bold text-slate-200 flex items-center justify-center gap-1">
             <Shield className="w-3.5 h-3.5 text-amber-400" /> {data.ac || '—'}
           </span>
         </div>
         <div>
-          <span className="text-[10px] text-slate-500 uppercase font-semibold block">PV</span>
+          <span className="text-micro text-slate-500 uppercase font-semibold block">PV</span>
           <span className="text-sm font-bold text-red-400 flex items-center justify-center gap-1">
             <Heart className="w-3.5 h-3.5" /> {data.hp_max || '—'}
           </span>
         </div>
         <div>
-          <span className="text-[10px] text-slate-500 uppercase font-semibold block">Vel.</span>
+          <span className="text-micro text-slate-500 uppercase font-semibold block">Vel.</span>
           <span className="text-xs font-bold text-slate-300 flex items-center justify-center gap-1">
             <Zap className="w-3.5 h-3.5 text-blue-400" /> {data.speed || '—'}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-6 gap-1 text-center bg-dungeon-900 p-2 rounded-lg border border-dungeon-800">
+      <div className="card grid grid-cols-6 gap-1 text-center p-2">
         {Object.entries(data.stats).map(([key, val]) => (
           <div key={key}>
             <span className="text-[9px] uppercase font-bold text-amber-400">{key}</span>
             <p className="text-xs font-bold text-slate-200">{val}</p>
-            <span className="text-[10px] text-slate-400">{formatMod(val)}</span>
+            <span className="text-micro text-slate-400">{formatMod(val)}</span>
           </div>
         ))}
       </div>
 
       {data.traits.length > 0 && (
         <div className="space-y-1.5 text-xs">
-          <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+          <h4 className="font-bold text-amber-400 uppercase tracking-wider text-micro border-b border-dungeon-800 pb-1">
             Rasgos
           </h4>
           {data.traits.map((trait, idx) => (
@@ -108,7 +108,7 @@ export const StatBlockCard: React.FC<StatBlockCardProps> = ({
       )}
 
       <div className="space-y-1.5 text-xs">
-        <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+        <h4 className="font-bold text-amber-400 uppercase tracking-wider text-micro border-b border-dungeon-800 pb-1">
           Acciones
         </h4>
         {shownActions.length > 0 ? (
@@ -130,7 +130,7 @@ export const StatBlockCard: React.FC<StatBlockCardProps> = ({
 
       {(data.legendary?.length ?? 0) > 0 && (
         <div className="space-y-1.5 text-xs">
-          <h4 className="font-bold text-purple-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+          <h4 className="font-bold text-purple-400 uppercase tracking-wider text-micro border-b border-dungeon-800 pb-1">
             Acciones legendarias
           </h4>
           {data.legendary!.map((act, idx) => (

@@ -174,7 +174,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <button
                 onClick={onClose}
                 aria-label="Cerrar ajustes"
-                className="p-2 text-slate-400 hover:text-slate-100 hover:bg-dungeon-800 rounded-lg transition min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="btn p-2 text-slate-400 hover:text-slate-100 hover:bg-dungeon-800 min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -222,7 +222,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 {!envConfigured && (
                   <form onSubmit={handleSaveConfig} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      <label className="label">
                         URL del proyecto Supabase
                       </label>
                       <input
@@ -230,11 +230,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         value={url}
                         onChange={e => setUrl(e.target.value)}
                         placeholder="https://TU-PROYECTO.supabase.co"
-                        className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px] font-mono"
+                        className="input p-2.5 min-h-[42px] font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      <label className="label">
                         Clave pública (anon / publishable)
                       </label>
                       <input
@@ -243,9 +243,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onChange={e => setKey(e.target.value)}
                         placeholder="eyJhbGciOi... (role anon)"
                         autoComplete="off"
-                        className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px] font-mono"
+                        className="input p-2.5 min-h-[42px] font-mono"
                       />
-                      <p className="text-[10px] text-slate-500 mt-1">
+                      <p className="text-micro text-slate-500 mt-1">
                         Sólo se acepta la clave pública. La <span className="text-red-400">service_role</span> se
                         rechaza: nunca debe salir del servidor.
                       </p>
@@ -255,7 +255,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <button
                         type="submit"
                         disabled={checking || !url.trim() || !key.trim()}
-                        className="flex items-center gap-2 bg-amber-500 hover:bg-amber-450 text-slate-950 text-sm font-bold px-4 py-2.5 rounded-lg transition disabled:opacity-50 min-h-[44px]"
+                        className="btn btn-primary flex items-center gap-2 text-sm py-2.5 disabled:opacity-50 min-h-[44px]"
                       >
                         {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                         Comprobar y guardar
@@ -264,7 +264,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <button
                           type="button"
                           onClick={handleClearConfig}
-                          className="text-xs text-slate-400 hover:text-red-400 px-3 py-2.5 rounded-lg border border-dungeon-700 transition min-h-[44px]"
+                          className="btn text-slate-400 hover:text-red-400 px-3 py-2.5 border border-dungeon-700 min-h-[44px]"
                         >
                           Borrar credenciales
                         </button>
@@ -304,7 +304,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                         placeholder="tu@email.com"
-                        className="bg-dungeon-950 border border-dungeon-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                        className="input p-2.5 min-h-[42px]"
                       />
                       <input
                         type="password"
@@ -313,14 +313,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         value={password}
                         onChange={e => setPassword(e.target.value)}
                         placeholder="Contraseña"
-                        className="bg-dungeon-950 border border-dungeon-800 rounded-lg p-2.5 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                        className="input p-2.5 min-h-[42px]"
                       />
                     </div>
                     {authError && <p className="text-xs text-red-400">{authError}</p>}
                     <button
                       type="submit"
                       disabled={signingIn}
-                      className="flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 text-sm font-semibold px-4 py-2.5 rounded-lg transition disabled:opacity-50 min-h-[44px]"
+                      className="btn flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 text-sm px-4 py-2.5 disabled:opacity-50 min-h-[44px]"
                     >
                       {signingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
                       Conectar con Supabase
@@ -346,14 +346,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={handleExport}
-                    className="flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-sm font-semibold px-4 py-2.5 rounded-lg transition min-h-[44px]"
+                    className="btn flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-sm px-4 py-2.5 min-h-[44px]"
                   >
                     <Download className="w-4 h-4" /> Exportar JSON
                   </button>
 
                   <button
                     onClick={() => fileRef.current?.click()}
-                    className="flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 border border-dungeon-700 text-sm font-semibold px-4 py-2.5 rounded-lg transition min-h-[44px]"
+                    className="btn flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-200 border border-dungeon-700 text-sm px-4 py-2.5 min-h-[44px]"
                   >
                     <Upload className="w-4 h-4" /> Importar JSON
                   </button>
@@ -401,7 +401,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   {SHORTCUTS.map(s => (
                     <li key={s.keys} className="flex items-center justify-between gap-3 text-xs">
                       <span className="text-slate-400">{s.desc}</span>
-                      <kbd className="bg-dungeon-950 border border-dungeon-700 rounded px-2 py-1 font-mono text-[11px] text-amber-300 shrink-0">
+                      <kbd className="bg-dungeon-950 border border-dungeon-700 rounded px-2 py-1 font-mono text-micro text-amber-300 shrink-0">
                         {s.keys}
                       </kbd>
                     </li>

@@ -56,10 +56,10 @@ export const TreasureGenerator: React.FC<TreasureGeneratorProps> = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+      <div className="card flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400">
-            <Gift className="w-6 h-6" />
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <Gift className="w-6 h-6 text-yellow-400" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-100">Generador de Tesoros</h2>
@@ -71,7 +71,7 @@ export const TreasureGenerator: React.FC<TreasureGeneratorProps> = ({
       </div>
 
       {/* Controles */}
-      <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-4 shadow-lg space-y-4">
+      <div className="card space-y-4">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {TIERS.map(t => (
             <button
@@ -84,7 +84,7 @@ export const TreasureGenerator: React.FC<TreasureGeneratorProps> = ({
               }`}
             >
               <span className="block text-xs font-bold">{t.label}</span>
-              <span className={`block text-[10px] ${tier === t.id ? 'text-slate-950/70' : 'text-slate-500'}`}>
+              <span className={`block text-micro ${tier === t.id ? 'text-slate-950/70' : 'text-slate-500'}`}>
                 {t.hint}
               </span>
             </button>
@@ -104,7 +104,7 @@ export const TreasureGenerator: React.FC<TreasureGeneratorProps> = ({
 
           <button
             onClick={handleGenerate}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-lg transition min-h-[44px]"
+            className="btn btn-primary flex items-center gap-2 text-sm py-2.5 min-h-[44px]"
           >
             <Sparkles className="w-4 h-4" /> Generar botín
           </button>
@@ -148,7 +148,7 @@ export const TreasureGenerator: React.FC<TreasureGeneratorProps> = ({
                     <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${line.gp > 0 ? 'bg-yellow-400' : 'bg-purple-400'}`} />
                     <span className="truncate">{line.label}</span>
                     {line.rarity && (
-                      <span className="text-[10px] uppercase tracking-wide text-purple-300 bg-purple-950 border border-purple-900 px-1.5 py-0.5 rounded shrink-0">
+                      <span className="text-micro uppercase tracking-wide text-purple-300 bg-purple-950 border border-purple-900 px-1.5 py-0.5 rounded shrink-0">
                         {line.rarity}
                       </span>
                     )}
@@ -163,7 +163,7 @@ export const TreasureGenerator: React.FC<TreasureGeneratorProps> = ({
             <button
               onClick={handleSendToInventory}
               disabled={sent}
-              className="flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-amber-300 text-sm font-semibold px-4 py-2.5 rounded-lg transition disabled:opacity-60 min-h-[44px]"
+              className="btn flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-amber-300 text-sm px-4 py-2.5 disabled:opacity-60 min-h-[44px]"
             >
               <Send className="w-4 h-4" />
               {sent ? 'Añadido al inventario' : 'Añadir todo al inventario'}
@@ -171,7 +171,7 @@ export const TreasureGenerator: React.FC<TreasureGeneratorProps> = ({
             {sent && (
               <button
                 onClick={onGoToInventory}
-                className="text-xs text-amber-400 hover:underline font-semibold"
+                className="btn text-amber-400 hover:underline"
               >
                 Ver en el inventario →
               </button>

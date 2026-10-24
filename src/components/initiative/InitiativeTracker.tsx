@@ -11,6 +11,7 @@ import {
   Share2, Link2, Copy, Eye, EyeOff, Radio, Check
 } from 'lucide-react';
 import { usePersistentState } from '@/lib/usePersistentState';
+import { useToast } from '@/components/Toast';
 import { AVAILABLE_CONDITIONS, CONDITION_ICONS } from '@/lib/conditions';
 import {
   getOrCreateShareToken,
@@ -40,6 +41,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   npcs,
   onUpdateCombatants,
 }) => {
+  const toast = useToast();
   // La sesión de combate también se guarda: un refresco no pierde la ronda.
   const [currentTurnIndex, setCurrentTurnIndex] = usePersistentState<number>('turn-index', 0);
   const [round, setRound] = usePersistentState<number>('round', 1);
@@ -339,6 +341,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
     const updated = sortCombatants([...combatants, newCombatant]);
     onUpdateCombatants(updated);
+    toast.success(`${newName} añadido a la escena.`);
     setIsAddModalOpen(false);
     resetForm();
   };
@@ -348,6 +351,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
     const updated = sortCombatants([...combatants, imported]);
     onUpdateCombatants(updated);
+    toast.success(`${imported.name} añadido a la escena.`);
   };
 
   const handleImportNpc = (npc: NPC) => {
@@ -355,6 +359,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
     const updated = sortCombatants([...combatants, imported]);
     onUpdateCombatants(updated);
+    toast.success(`${imported.name} añadido a la escena.`);
   };
 
   const handleHpChange = (id: string, delta: number) => {
@@ -475,11 +480,15 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   };
 
   const handleRemoveCombatant = (id: string) => {
+    const target = combatants.find(c => c.id === id);
+    if (!target) return;
+    if (!window.confirm(`¿Quitar a ${target.name} de la escena?`)) return;
     const updated = combatants.filter(c => c.id !== id);
     if (currentTurnIndex >= updated.length) {
       setCurrentTurnIndex(Math.max(0, updated.length - 1));
     }
     onUpdateCombatants(updated);
+    toast.success(`${target.name} salió de la escena.`);
   };
 
   const resetForm = () => {
@@ -496,10 +505,10 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
   return (
     <div className="space-y-6">
       {/* Header controls */}
-      <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+      <div className="card flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
-          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400">
-            <Swords className="w-6 h-6" />
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <Swords className="w-6 h-6 text-amber-400" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 flex-wrap">
@@ -519,7 +528,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
           <button
             onClick={handleRollInitiative}
             disabled={combatants.length === 0}
-            className="flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-amber-400 px-3 py-2 rounded-lg text-sm border border-dungeon-700 transition disabled:opacity-50"
+            className="btn flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-amber-400 px-3 py-2 text-sm border border-dungeon-700 disabled:opacity-50"
             title="Tira 1d20 + mod. DEST para monstruos y NPCs y reordena la ronda"
           >
             <Dices className="w-4 h-4" />
@@ -530,7 +539,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             <button
               onClick={handlePrevTurn}
               disabled={combatants.length === 0 || (round === 1 && currentTurnIndex === 0)}
-              className="flex items-center gap-1 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 font-medium px-3 py-2 text-sm border-r border-amber-500/30 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn flex items-center gap-1 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 text-sm border-r border-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
               title="Turno Anterior"
             >
               <ArrowLeft className="w-4 h-4 text-amber-400" />
@@ -539,7 +548,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             <button
               onClick={handleNextTurn}
               disabled={combatants.length === 0}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold px-4 py-2 text-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
+              className="btn btn-primary flex items-center gap-1.5 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
               title="Siguiente Turno (Espacio o Enter)"
             >
               <span>Siguiente</span>
@@ -549,7 +558,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
           <button
             onClick={handleResetCombat}
-            className="flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 rounded-lg text-sm border border-dungeon-700 transition"
+            className="btn btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm"
             title="Reiniciar rondas y turnos"
           >
             <RotateCcw className="w-4 h-4 text-slate-400" />
@@ -558,7 +567,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-amber-400 px-3 py-2 rounded-lg text-sm border border-dungeon-700 transition"
+            className="btn flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-amber-400 px-3 py-2 text-sm border border-dungeon-700"
           >
             <Sparkles className="w-4 h-4" />
             <span className="hidden sm:inline">Importar Monstruo / NPC</span>
@@ -567,7 +576,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 px-3 py-2 rounded-lg text-sm border border-amber-500/30 transition"
+            className="btn flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 px-3 py-2 text-sm border border-amber-500/30"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Nuevo Combatiente</span>
@@ -594,7 +603,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
           <button
             onClick={toggleFullscreen}
-            className="flex items-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 rounded-lg text-sm border border-dungeon-700 transition"
+            className="btn btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm"
             title="Ver el combate a pantalla completa (ideal para tablets del DM)"
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -616,7 +625,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             <div className="flex items-center gap-2">
               <Radio className={`w-4 h-4 ${shareStatus === 'live' ? 'text-emerald-400 animate-pulse' : shareStatus === 'error' ? 'text-red-400' : 'text-amber-400'}`} />
               <h3 className="text-sm font-bold text-slate-100">Vista de jugadores en vivo</h3>
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${
+              <span className={`text-micro font-semibold px-2 py-0.5 rounded border ${
                 shareStatus === 'live'
                   ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
                   : shareStatus === 'error'
@@ -654,14 +663,14 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             </div>
             <button
               onClick={handleCopyShareLink}
-              className="flex items-center justify-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 text-xs font-semibold px-3 py-2 rounded-lg transition shrink-0 min-h-[40px]"
+              className="btn flex items-center justify-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 px-3 py-2 shrink-0 min-h-[40px]"
             >
               {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               {copiedLink ? 'Copiado' : 'Copiar enlace'}
             </button>
           </div>
 
-          <p className="text-[11px] text-slate-500">
+          <p className="text-micro text-slate-500">
             Los jugadores abren el enlace en su móvil y ven la iniciativa, el turno, las condiciones y las barras de vida en tiempo real. No pueden editar nada.
           </p>
         </motion.div>
@@ -695,7 +704,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
           <div className="mt-4 flex justify-center gap-3">
             <button
               onClick={() => setIsImportModalOpen(true)}
-              className="bg-amber-500 text-slate-950 px-4 py-2 rounded-lg font-medium text-sm hover:bg-amber-450 transition"
+              className="btn btn-primary text-sm"
             >
               Importar del Compendio
             </button>
@@ -760,16 +769,16 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                             {c.name}
                           </h3>
                           {defeated && (
-                            <span className="text-[10px] bg-slate-700/60 text-slate-300 font-semibold px-2 py-0.5 rounded border border-slate-600 uppercase tracking-wide">
+                            <span className="text-micro bg-slate-700/60 text-slate-300 font-semibold px-2 py-0.5 rounded border border-slate-600 uppercase tracking-wide">
                               Fuera de combate
                             </span>
                           )}
                           {c.is_player ? (
-                            <span className="text-[10px] bg-blue-500/20 text-blue-300 font-semibold px-2 py-0.5 rounded border border-blue-500/30 flex items-center gap-1">
+                            <span className="text-micro bg-blue-500/20 text-blue-300 font-semibold px-2 py-0.5 rounded border border-blue-500/30 flex items-center gap-1">
                               <UserCheck className="w-3 h-3" /> Jugador
                             </span>
                           ) : (
-                            <span className="text-[10px] bg-red-500/20 text-red-300 font-semibold px-2 py-0.5 rounded border border-red-500/30 flex items-center gap-1">
+                            <span className="text-micro bg-red-500/20 text-red-300 font-semibold px-2 py-0.5 rounded border border-red-500/30 flex items-center gap-1">
                               <Skull className="w-3 h-3" /> Enemigo
                             </span>
                           )}
@@ -777,7 +786,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                             <motion.span
                               initial={{ opacity: 0, scale: 0.8 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              className="text-[10px] bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded uppercase tracking-wide"
+                              className="text-micro bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded uppercase tracking-wide"
                             >
                               Turno
                             </motion.span>
@@ -804,7 +813,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                             setHpModalTab('damage');
                             setHpModalAmount('');
                           }}
-                          className="flex items-center gap-1 text-red-400 hover:text-red-300 hover:underline transition"
+                          className="btn flex items-center gap-1 text-red-400 hover:text-red-300 hover:underline"
                           title="Hacer clic para abrir la calculadora de daño/curación" aria-label="Abrir calculadora de daño y curación"
                         >
                           <Heart className="w-3.5 h-3.5 fill-red-400/20" /> HP:
@@ -812,7 +821,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                         <div className="flex items-center gap-1.5">
                           {c.hp_temp && c.hp_temp > 0 ? (
                             <span
-                              className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1.5 py-0.5 rounded font-mono font-bold"
+                              className="text-micro bg-sky-500/20 text-sky-300 border border-sky-500/40 px-1.5 py-0.5 rounded font-mono font-bold"
                               title="Puntos de golpe temporales"
                             >
                               +{c.hp_temp} temp
@@ -825,7 +834,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                               setHpModalTab('damage');
                               setHpModalAmount('');
                             }}
-                            className="flex items-center overflow-hidden hover:text-amber-300 font-mono"
+                            className="btn flex items-center overflow-hidden hover:text-amber-300 font-mono"
                             title="Haz clic para modificar daño/curación"
                           >
                             <AnimatePresence mode="popLayout" initial={false}>
@@ -866,28 +875,28 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                         <button
                           onClick={() => handleHpChange(c.id, -5)}
                           aria-label={`Restar 5 PV a ${c.name}`}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-2 rounded border border-red-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
+                          className="btn bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2 border border-red-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           -5
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, -1)}
                           aria-label={`Restar 1 PV a ${c.name}`}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold px-2 rounded border border-red-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
+                          className="btn bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2 border border-red-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           -1
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, 1)}
                           aria-label={`Sumar 1 PV a ${c.name}`}
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2 rounded border border-emerald-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
+                          className="btn bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-2 border border-emerald-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           +1
                         </button>
                         <button
                           onClick={() => handleHpChange(c.id, 5)}
                           aria-label={`Sumar 5 PV a ${c.name}`}
-                          className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2 rounded border border-emerald-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
+                          className="btn bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-2 border border-emerald-500/20 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           +5
                         </button>
@@ -900,7 +909,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                           }}
                           aria-label={`Abrir cálculo personalizado de daño para ${c.name}`}
                           title="Daño / Curación / Temp exacto"
-                          className="bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 text-xs font-black px-2 rounded border border-amber-500/30 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
+                          className="btn bg-amber-500/10 hover:bg-amber-500/25 text-amber-300 font-black px-2 border border-amber-500/30 min-w-[38px] min-h-[44px] sm:min-h-[36px] sm:min-w-[36px]"
                         >
                           ±
                         </button>
@@ -941,13 +950,13 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.85 }}
                                 transition={{ duration: 0.15 }}
-                                className="inline-flex items-center gap-1 text-[10px] bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded hover:bg-purple-900 transition"
+                                className="inline-flex items-center gap-1 text-micro bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded hover:bg-purple-900 transition"
                               >
                                 <button
                                   type="button"
                                   onClick={() => handleToggleCondition(c.id, cond)}
                                   title="Haz clic para remover la condición"
-                                  className="hover:text-purple-100 transition inline-flex items-center gap-1"
+                                  className="btn hover:text-purple-100 inline-flex items-center gap-1"
                                 >
                                   <span aria-hidden="true">{CONDITION_ICONS[cond] ?? '•'}</span>
                                   {cond}
@@ -989,7 +998,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
 
                       <button
                         onClick={() => handleRemoveCombatant(c.id)}
-                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition shrink-0"
+                        className="btn btn-icon text-slate-400 hover:text-red-400 hover:bg-red-500/10 shrink-0"
                         title="Eliminar de la iniciativa" aria-label="Eliminar de la iniciativa"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1006,59 +1015,59 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
       {/* MODAL 1: Create Custom Combatant */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="card p-6 max-w-md w-full shadow-2xl space-y-4">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
               Agregar Nuevo Combatiente
             </h3>
 
             <form onSubmit={handleAddCustom} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Nombre</label>
+                <label className="label">Nombre</label>
                 <input
                   type="text"
                   required
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   placeholder="Ej: Aragorn / Goblin Asesino"
-                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                  className="input"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Iniciativa</label>
+                  <label className="label">Iniciativa</label>
                   <input
                     type="number"
                     required
                     value={newInitiative}
                     onChange={e => setNewInitiative(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">HP Máximo</label>
+                  <label className="label">HP Máximo</label>
                   <input
                     type="number"
                     required
                     value={newHp}
                     onChange={e => setNewHp(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">AC</label>
+                  <label className="label">AC</label>
                   <input
                     type="number"
                     required
                     value={newAc}
                     onChange={e => setNewAc(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">
+                <label className="label">
                   Modificador de Destreza (para lanzar iniciativa)
                 </label>
                 <input
@@ -1066,7 +1075,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   value={newDexMod}
                   onChange={e => setNewDexMod(Number(e.target.value))}
                   disabled={isPlayer}
-                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none disabled:opacity-50"
+                  className="input disabled:opacity-50"
                 />
               </div>
 
@@ -1087,13 +1096,13 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-dungeon-800 transition"
+                  className="btn px-4 py-2 text-sm text-slate-400 hover:bg-dungeon-800"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
+                  className="btn btn-primary text-sm"
                 >
                   Agregar Combatiente
                 </button>
@@ -1106,7 +1115,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
       {/* MODAL 2: Import from Monster / NPC Database */}
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+          <div className="card p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
                         <div className="flex items-center justify-between border-b border-dungeon-800 pb-3">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-400" />
@@ -1117,7 +1126,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   setIsImportModalOpen(false);
                   setImportSearchTerm('');
                 }}
-                className="text-slate-500 hover:text-slate-300 text-sm" aria-label="Cerrar importación"
+                className="btn text-slate-500 hover:text-slate-300 text-sm" aria-label="Cerrar importación"
               >
                 ✕
               </button>
@@ -1131,14 +1140,14 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                 value={importSearchTerm}
                 onChange={e => setImportSearchTerm(e.target.value)}
                 placeholder="Buscar por nombre, tipo, raza o CR..."
-                className="w-full bg-dungeon-950 border border-dungeon-800 focus:border-amber-500/50 rounded-lg pl-9 pr-8 py-2 text-xs text-slate-200 placeholder-slate-500 outline-none transition"
+                className="input pl-9 pr-8 py-2 text-xs placeholder-slate-500 outline-none transition"
                 autoFocus
               />
               {importSearchTerm && (
                 <button
                   type="button"
                   onClick={() => setImportSearchTerm('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-slate-300" aria-label="Borrar búsqueda"
+                  className="btn absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300" aria-label="Borrar búsqueda"
                 >
                   ✕
                 </button>
@@ -1178,7 +1187,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-slate-200 text-sm truncate block">{m.name}</span>
                           {isCustomMon(m) && (
-                            <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded font-semibold">
+                            <span className="text-micro bg-amber-500/20 text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded font-semibold">
                               Creado
                             </span>
                           )}
@@ -1194,7 +1203,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                       </div>
                       <button
                         onClick={() => handleImportMonster(m)}
-                        className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition shrink-0"
+                        className="btn bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 px-3 py-1.5 shrink-0"
                       >
                         + Añadir al Combate
                       </button>
@@ -1224,7 +1233,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                       </div>
                       <button
                         onClick={() => handleImportNpc(n)}
-                        className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition shrink-0"
+                        className="btn bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 px-3 py-1.5 shrink-0"
                       >
                         + Añadir al Combate
                       </button>
@@ -1239,7 +1248,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
             <div className="flex justify-end pt-3 border-t border-dungeon-800">
               <button
                 onClick={() => setIsImportModalOpen(false)}
-                className="bg-dungeon-800 text-slate-300 px-4 py-2 rounded-lg text-sm hover:bg-dungeon-700 transition"
+                className="btn bg-dungeon-800 text-slate-300 px-4 py-2 text-sm hover:bg-dungeon-700"
               >
                 Cerrar
               </button>
@@ -1272,7 +1281,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
               <button
                 type="button"
                 onClick={() => setHpModalCombatant(null)}
-                className="text-slate-400 hover:text-slate-200 text-lg p-1" aria-label="Cerrar"
+                className="btn text-slate-400 hover:text-slate-200 text-lg p-1" aria-label="Cerrar"
               >
                 ✕
               </button>
@@ -1334,7 +1343,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                   />
                 </div>
                 {hpModalTab === 'damage' && hpModalCombatant.hp_temp ? (
-                  <p className="text-[11px] text-sky-400 mt-1">
+                  <p className="text-micro text-sky-400 mt-1">
                     ℹ️ Los primeros {hpModalCombatant.hp_temp} de daño se absorberán con los PV temporales.
                   </p>
                 ) : null}
@@ -1347,7 +1356,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                     key={n}
                     type="button"
                     onClick={() => setHpModalAmount(String(n))}
-                    className="bg-dungeon-950 hover:bg-dungeon-800 border border-dungeon-800 text-xs text-slate-300 font-semibold py-1.5 rounded transition"
+                    className="btn bg-dungeon-950 hover:bg-dungeon-800 border border-dungeon-800 text-slate-300 py-1.5"
                   >
                     {n}
                   </button>
@@ -1358,7 +1367,7 @@ export const InitiativeTracker: React.FC<InitiativeTrackerProps> = ({
                 <button
                   type="button"
                   onClick={() => setHpModalCombatant(null)}
-                  className="flex-1 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 text-xs font-semibold py-2 rounded-lg transition"
+                  className="btn flex-1 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 py-2"
                 >
                   Cancelar
                 </button>

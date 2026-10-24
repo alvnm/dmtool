@@ -100,7 +100,7 @@ const ListEditor: React.FC<ListEditorProps> = ({
           placeholder={nameLabel}
           value={name}
           onChange={e => setName(e.target.value)}
-          className="bg-dungeon-900 border border-dungeon-800 text-xs rounded p-2 text-slate-200 focus:border-amber-500/50 focus:outline-none"
+          className="input bg-dungeon-900 text-xs"
         />
         <input
           type="text"
@@ -113,13 +113,13 @@ const ListEditor: React.FC<ListEditorProps> = ({
               handleAdd();
             }
           }}
-          className="bg-dungeon-900 border border-dungeon-800 text-xs rounded p-2 text-slate-200 focus:border-amber-500/50 focus:outline-none md:col-span-2"
+          className="input bg-dungeon-900 text-xs md:col-span-2"
         />
       </div>
       <button
         type="button"
         onClick={handleAdd}
-        className="bg-dungeon-800 text-amber-300 hover:bg-dungeon-700 text-xs px-3 py-1 rounded font-semibold transition"
+        className="btn bg-dungeon-800 text-amber-300 hover:bg-dungeon-700 px-3 py-1"
       >
         + Añadir
       </button>
@@ -139,7 +139,7 @@ const ListEditor: React.FC<ListEditorProps> = ({
                 onClick={() => onChange(items.filter((_, idx) => idx !== i))}
                 aria-label={`Quitar ${item.name}`}
                 title={`Quitar ${item.name}`}
-                className="text-slate-500 hover:text-red-400 shrink-0 transition"
+                className="btn text-slate-500 hover:text-red-400 shrink-0"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -167,12 +167,12 @@ export const StatBlockFields: React.FC<StatBlockFieldsProps> = ({ value, onChang
     apply: (v: number) => void
   ) => (
     <div>
-      <label className="block text-xs font-semibold text-slate-400 mb-1">{label}</label>
+      <label className="label">{label}</label>
       <input
         type="number"
         value={current}
         onChange={e => apply(Number(e.target.value))}
-        className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500/50 focus:outline-none"
+        className="input"
       />
     </div>
   );
@@ -183,23 +183,23 @@ export const StatBlockFields: React.FC<StatBlockFieldsProps> = ({ value, onChang
         {numInput('Clase de Armadura (CA)', value.ac, v => onChange({ ...value, ac: v }))}
         {numInput('Puntos de Vida máx.', value.hp_max, v => onChange({ ...value, hp_max: v }))}
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1">Velocidad</label>
+          <label className="label">Velocidad</label>
           <input
             type="text"
             value={value.speed}
             onChange={e => onChange({ ...value, speed: e.target.value })}
             placeholder="30 ft."
-            className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500/50 focus:outline-none"
+            className="input"
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1">Desafío (CR)</label>
+          <label className="label">Desafío (CR)</label>
           <input
             type="text"
             value={value.cr}
             onChange={e => onChange({ ...value, cr: e.target.value })}
             placeholder="1/2"
-            className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500/50 focus:outline-none"
+            className="input"
           />
         </div>
       </div>
@@ -211,7 +211,7 @@ export const StatBlockFields: React.FC<StatBlockFieldsProps> = ({ value, onChang
         <div className="grid grid-cols-6 gap-2">
           {STAT_KEYS.map(key => (
             <div key={key}>
-              <span className="text-[10px] text-slate-400 block text-center uppercase">
+              <span className="text-micro text-slate-400 block text-center uppercase">
                 {key}
               </span>
               <input
@@ -219,9 +219,9 @@ export const StatBlockFields: React.FC<StatBlockFieldsProps> = ({ value, onChang
                 aria-label={`Atributo ${key.toUpperCase()}`}
                 value={value.stats[key]}
                 onChange={e => setStat(key, Number(e.target.value))}
-                className="w-full bg-dungeon-900 border border-dungeon-800 rounded text-center text-xs text-slate-200 py-1 focus:border-amber-500/50 focus:outline-none"
+                className="input bg-dungeon-900 text-center text-xs py-1"
               />
-              <span className="text-[10px] text-slate-500 block text-center">
+              <span className="text-micro text-slate-500 block text-center">
                 {formatMod(value.stats[key])}
               </span>
             </div>

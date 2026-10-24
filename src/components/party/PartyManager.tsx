@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Plus, Shield, Eye, Heart, Swords, Trash2, Edit2, Skull } from 'lucide-react';
 import { Combatant, PartyMember } from '@/types';
+import { useToast } from '@/components/Toast';
 
 /**
  * Ficha resumen del grupo: lo que el DM necesita mirar sin pestañas de más
@@ -27,6 +28,7 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
   combatants,
   onUpdateCombatants,
 }) => {
+  const toast = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -107,13 +109,18 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
       onUpdateMembers([...members, member]);
     }
     setIsModalOpen(false);
+    toast.success(editingId ? `Ficha de ${name} actualizada.` : `Ficha de ${name} creada.`);
     resetForm();
   };
 
   const handleDelete = (id: string) => {
+    const target = members.find(m => m.id === id);
+    if (!target) return;
+    if (!window.confirm(`¿Eliminar a ${target.name} del grupo? También saldrá del combate si estaba en él.`)) return;
     onUpdateMembers(members.filter(m => m.id !== id));
     // Si estaba en combate, también sale de la iniciativa.
     onUpdateCombatants(combatants.filter(c => c.id !== id));
+    toast.success(`${target.name} eliminado del grupo.`);
   };
 
   const inCombat = (m: PartyMember) => combatants.find(c => c.id === m.id);
@@ -142,10 +149,10 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+      <div className="card flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-blue-400">
-            <Users className="w-6 h-6" />
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <Users className="w-6 h-6 text-blue-400" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-100">Gestor de Jugadores</h2>
@@ -156,7 +163,7 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
         </div>
         <button
           onClick={openAdd}
-          className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 px-3 py-2 rounded-lg text-sm border border-amber-500/30 transition"
+          className="btn flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 px-3 py-2 text-sm border border-amber-500/30"
         >
           <Plus className="w-4 h-4" /> Nuevo PJ
         </button>
@@ -172,7 +179,7 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
           </p>
           <button
             onClick={openAdd}
-            className="mt-4 bg-amber-500 text-slate-950 px-4 py-2 rounded-lg font-medium text-sm hover:bg-amber-450 transition"
+            className="btn btn-primary mt-4 text-sm"
           >
             Añadir PJ
           </button>
@@ -198,21 +205,21 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <h3 className="font-bold text-slate-100 truncate">{m.name}</h3>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-micro text-slate-400">
                         Nivel {m.level} {m.className}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => openEdit(m)}
-                        className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition"
+                        className="btn btn-icon text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"
                         title="Editar ficha" aria-label="Editar ficha"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDelete(m.id)}
-                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
+                        className="btn btn-icon text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                         title="Eliminar del grupo" aria-label="Eliminar del grupo"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -242,7 +249,7 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                   {/* HP en vivo si está en combate */}
                   {live ? (
                     <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center justify-between text-micro">
                         <span className="text-slate-400">En combate</span>
                         <span className="font-semibold text-red-400">
                           {live.hp_current}/{live.hp_max} PV
@@ -263,14 +270,14 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                     {live ? (
                       <button
                         onClick={() => removeFromCombat(m)}
-                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 rounded-lg transition min-h-[40px]"
+                        className="btn flex-1 flex items-center justify-center gap-1.5 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 min-h-[40px]"
                       >
                         <Skull className="w-3.5 h-3.5" /> Quitar del combate
                       </button>
                     ) : (
                       <button
                         onClick={() => sendToCombat(m)}
-                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-2 rounded-lg transition min-h-[40px]"
+                        className="btn flex-1 flex items-center justify-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-3 py-2 min-h-[40px]"
                       >
                         <Swords className="w-3.5 h-3.5" /> Enviar al combate
                       </button>
@@ -286,7 +293,7 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
       {/* Modal alta/edición */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="card p-6 max-w-md w-full shadow-2xl space-y-4">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
               {editingId ? 'Editar personaje' : 'Añadir personaje jugador'}
             </h3>
@@ -294,94 +301,94 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nombre</label>
+                  <label className="label">Nombre</label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="Ej: Lira Vientosol"
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                    className="input min-h-[42px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Clase</label>
+                  <label className="label">Clase</label>
                   <input
                     type="text"
                     value={className}
                     onChange={e => setClassName(e.target.value)}
                     placeholder="Ej: Pícara 5"
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                    className="input min-h-[42px]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nivel</label>
+                  <label className="label">Nivel</label>
                   <input
                     type="number"
                     min={1}
                     max={20}
                     value={level}
                     onChange={e => setLevel(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                    className="input min-h-[42px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">CA</label>
+                  <label className="label">CA</label>
                   <input
                     type="number"
                     value={ac}
                     onChange={e => setAc(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                    className="input min-h-[42px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">HP máximo</label>
+                  <label className="label">HP máximo</label>
                   <input
                     type="number"
                     min={1}
                     value={maxHp}
                     onChange={e => setMaxHp(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                    className="input min-h-[42px]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Mod. Sabiduría</label>
+                  <label className="label">Mod. Sabiduría</label>
                   <input
                     type="number"
                     min={-5}
                     max={10}
                     value={wisMod}
                     onChange={e => setWisMod(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                    className="input min-h-[42px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Percep. pasiva*</label>
+                  <label className="label">Percep. pasiva*</label>
                   <input
                     type="number"
                     value={passiveInput}
                     onChange={e => setPassiveInput(e.target.value)}
                     placeholder={String(10 + wisMod)}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                    className="input min-h-[42px]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Iniciativa</label>
+                  <label className="label">Iniciativa</label>
                   <input
                     type="number"
                     value={initiative}
                     onChange={e => setInitiative(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none min-h-[42px]"
+                    className="input min-h-[42px]"
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-slate-500">* Vacío = 10 + mod. Sabiduría.</p>
+              <p className="text-micro text-slate-500">* Vacío = 10 + mod. Sabiduría.</p>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-dungeon-800">
                 <button
@@ -390,13 +397,13 @@ export const PartyManager: React.FC<PartyManagerProps> = ({
                     setIsModalOpen(false);
                     resetForm();
                   }}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-dungeon-800 transition min-h-[42px]"
+                  className="btn px-4 py-2 text-sm text-slate-400 hover:bg-dungeon-800 min-h-[42px]"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition min-h-[42px]"
+                  className="btn btn-primary text-sm min-h-[42px]"
                 >
                   {editingId ? 'Guardar cambios' : 'Añadir PJ'}
                 </button>

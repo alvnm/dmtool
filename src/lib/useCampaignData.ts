@@ -77,6 +77,8 @@ export interface CampaignDataApi {
   setParty: React.Dispatch<React.SetStateAction<PartyMember[]>>;
   supabaseActive: boolean;
   userEmail: string | null;
+  /** Descarga inicial (compendio SRD + nube) todavía en curso. */
+  initialLoading: boolean;
   syncStatus: SyncStatus;
   syncError: string | null;
   storageAlert: string | null;
@@ -97,6 +99,7 @@ export function useCampaignData(): CampaignDataApi {
   const [activeTab, setActiveTab] = usePersistentState<string>(STORAGE_KEYS.activeTab, 'dashboard');
 
   // Conexión con la nube
+  const [initialLoading, setInitialLoading] = useState(true);
   const [supabaseActive, setSupabaseActive] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
@@ -186,6 +189,7 @@ export function useCampaignData(): CampaignDataApi {
     const configured = isCloudConfigured();
     setSupabaseActive(configured);
     if (!configured) setSyncStatus('idle');
+    setInitialLoading(true);
 
     let cancelled = false;
     let sub: { subscription: { unsubscribe: () => void } } | undefined;
@@ -203,12 +207,25 @@ export function useCampaignData(): CampaignDataApi {
       setUserEmail(null);
     }
 
-    loadCompendium().then(() => {
-      if (cancelled || !configured) return;
-      return loadDataFromSupabase().catch(err => {
-        console.warn('Supabase fetch failed, fallback to local state:', err);
+    loadCompendium()
+      .catch(err => {
+        // Sin compendio la app sigue con los datos de ejemplo.
+        console.warn('Compendium load failed, fallback to sample data:', err);
+      })
+      .then(() => {
+        if (cancelled) return;
+        if (!configured) {
+          setInitialLoading(false);
+          return;
+        }
+        return loadDataFromSupabase()
+          .catch(err => {
+            console.warn('Supabase fetch failed, fallback to local state:', err);
+          })
+          .finally(() => {
+            if (!cancelled) setInitialLoading(false);
+          });
       });
-    });
     return () => {
       cancelled = true;
       sub?.subscription.unsubscribe();
@@ -278,6 +295,7 @@ export function useCampaignData(): CampaignDataApi {
     setParty,
     supabaseActive,
     userEmail,
+    initialLoading,
     syncStatus,
     syncError,
     storageAlert,

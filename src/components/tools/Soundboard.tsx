@@ -49,14 +49,14 @@ export const Soundboard: React.FC = () => {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] text-slate-400">
+        <p className="text-micro text-slate-400">
           Efectos sintetizados al vuelo: sin archivos y funcionan offline.
         </p>
         <button
           type="button"
           onClick={stopAll}
           disabled={!anyActive}
-          className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg border border-red-800 text-red-300 bg-red-950/50 hover:bg-red-900/50 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          className="btn flex items-center gap-1.5 text-micro px-2.5 py-1.5 border border-red-800 text-red-300 bg-red-950/50 hover:bg-red-900/50 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Square className="w-3 h-3" />
           Detener todo
@@ -74,7 +74,7 @@ export const Soundboard: React.FC = () => {
               aria-pressed={active}
               aria-label={`${active ? 'Detener' : 'Reproducir'} ${sound.label}`}
               title={sound.loop ? `${sound.label} (bucle)` : sound.label}
-              className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg border text-[11px] font-semibold transition ${
+              className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-lg border text-micro font-semibold transition ${
                 active
                   ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-inner'
                   : 'bg-dungeon-950 border-dungeon-800 text-slate-300 hover:border-amber-500/40 hover:text-amber-300'

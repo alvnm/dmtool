@@ -141,7 +141,7 @@ export default function PlayerCombatView() {
   if (status === 'error' || !params) {
     return (
       <main className="min-h-screen bg-dungeon-950 text-slate-100 flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center space-y-3 bg-dungeon-900 border border-dungeon-800 rounded-xl p-6">
+        <div className="card max-w-md w-full text-center space-y-3">
           <WifiOff className="w-10 h-10 text-red-400 mx-auto" />
           <h1 className="text-lg font-bold">Enlace de combate no válido</h1>
           <p className="text-sm text-slate-400">
@@ -168,18 +168,18 @@ export default function PlayerCombatView() {
               <h1 className="text-sm font-bold text-slate-100 font-serif truncate">
                 Vista de Combate
               </h1>
-              <p className="text-[10px] text-slate-400">En vivo desde la mesa del DM</p>
+              <p className="text-micro text-slate-400">En vivo desde la mesa del DM</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
             {state && (
-              <span className="text-[10px] bg-amber-500/20 text-amber-300 font-semibold px-2 py-1 rounded border border-amber-500/30">
+              <span className="text-micro bg-amber-500/20 text-amber-300 font-semibold px-2 py-1 rounded border border-amber-500/30">
                 Ronda {state.round}
               </span>
             )}
             <span
-              className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded border ${
+              className={`flex items-center gap-1 text-micro font-semibold px-2 py-1 rounded border ${
                 isLive
                   ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
                   : 'bg-amber-500/15 text-amber-300 border-amber-500/40'
@@ -202,7 +202,7 @@ export default function PlayerCombatView() {
         {activeCombatant ? (
           <div className="bg-dungeon-850 border border-amber-500/60 rounded-xl p-4 flex items-center justify-between gap-3 shadow-xl">
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-widest text-amber-400 font-bold">
+              <p className="text-micro uppercase tracking-widest text-amber-400 font-bold">
                 Turno actual
               </p>
               <p className="text-xl font-black text-slate-100 truncate">
@@ -210,7 +210,7 @@ export default function PlayerCombatView() {
               </p>
             </div>
             <span
-              className={`text-[10px] font-black px-2.5 py-1 rounded uppercase tracking-wide shrink-0 ${
+              className={`text-micro font-black px-2.5 py-1 rounded uppercase tracking-wide shrink-0 ${
                 activeCombatant.is_player
                   ? 'bg-blue-500/25 text-blue-300 border border-blue-500/40'
                   : 'bg-red-500/25 text-red-300 border border-red-500/40'
@@ -270,7 +270,7 @@ export default function PlayerCombatView() {
                           {c.name}
                         </h2>
                         <span
-                          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                          className={`text-micro font-semibold px-1.5 py-0.5 rounded border ${
                             c.is_player
                               ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
                               : 'bg-red-500/20 text-red-300 border-red-500/30'
@@ -279,7 +279,7 @@ export default function PlayerCombatView() {
                           {c.is_player ? 'PJ' : 'Enemigo'}
                         </span>
                         {isActive && (
-                          <span className="text-[10px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.5 rounded uppercase">
+                          <span className="text-micro bg-amber-500 text-slate-950 font-black px-1.5 py-0.5 rounded uppercase">
                             Turno
                           </span>
                         )}
@@ -308,11 +308,11 @@ export default function PlayerCombatView() {
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           {c.hp_temp && c.hp_temp > 0 ? (
-                            <span className="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1 py-0.2 rounded font-mono font-bold">
+                            <span className="text-micro bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1 py-0.2 rounded font-mono font-bold">
                               +{c.hp_temp}
                             </span>
                           ) : null}
-                          <span className="text-[11px] font-semibold text-slate-300 tabular-nums text-right">
+                          <span className="text-micro font-semibold text-slate-300 tabular-nums text-right">
                             {c.hp_current === null
                               ? `${c.hp_max} máx.`
                               : `${c.hp_current} / ${c.hp_max}`}
@@ -330,7 +330,7 @@ export default function PlayerCombatView() {
                         return (
                           <span
                             key={cond}
-                            className="inline-flex items-center gap-1 text-[10px] bg-purple-950/80 text-purple-300 border border-purple-800 px-2 py-1 rounded"
+                            className="inline-flex items-center gap-1 text-micro bg-purple-950/80 text-purple-300 border border-purple-800 px-2 py-1 rounded"
                           >
                             <span aria-hidden="true">{CONDITION_ICONS[cond] ?? '•'}</span>
                             {cond}

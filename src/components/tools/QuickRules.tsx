@@ -27,7 +27,7 @@ export const QuickRules: React.FC = () => {
           onChange={e => setQuery(e.target.value)}
           placeholder="Buscar regla: concentración, cobertura, agarrado…"
           aria-label="Buscar en la referencia de reglas"
-          className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:border-amber-500/50 focus:outline-none"
+          className="input pl-9 pr-3 py-2 text-xs"
         />
       </div>
 
@@ -38,7 +38,7 @@ export const QuickRules: React.FC = () => {
             type="button"
             onClick={() => setCategory(f)}
             aria-pressed={category === f}
-            className={`text-[10px] font-bold px-2 py-1 rounded-full border transition ${
+            className={`text-micro font-bold px-2 py-1 rounded-full border transition ${
               category === f
                 ? 'bg-amber-500/20 border-amber-500/60 text-amber-300'
                 : 'bg-dungeon-950 border-dungeon-800 text-slate-400 hover:text-slate-200'
@@ -57,7 +57,7 @@ export const QuickRules: React.FC = () => {
                 <span className="text-xs font-bold text-amber-400">{rule.title}</span>
                 <span className="text-[9px] uppercase font-bold text-slate-500">{rule.category}</span>
               </div>
-              <p className="text-[11px] leading-relaxed text-slate-300">{rule.text}</p>
+              <p className="text-micro leading-relaxed text-slate-300">{rule.text}</p>
             </div>
           ))
         ) : (

@@ -6,7 +6,7 @@ import {
   Search, CornerDownLeft, FileText, Skull, BookOpen, Users, Swords,
   LayoutDashboard, Backpack, Gift, UserCheck, Command,
 } from 'lucide-react';
-import { Combatant, DMNote, Monster, NPC, Spell } from '@/types';
+import { Combatant, DMNote, InventoryItem, Monster, NPC, Spell } from '@/types';
 
 export type PaletteTabId =
   | 'dashboard' | 'initiative' | 'inventory' | 'monsters'
@@ -35,6 +35,7 @@ interface CommandPaletteProps {
   spells: Spell[];
   npcs: NPC[];
   partyNames: string[];
+  items: InventoryItem[];
   combatants: Combatant[];
 }
 
@@ -68,6 +69,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   npcs,
   partyNames,
   combatants,
+  items,
 }) => {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
@@ -137,6 +139,14 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         icon: Swords,
         tab: 'initiative' as PaletteTabId,
       })),
+      ...items.map(i => ({
+        key: `item:${i.id}`,
+        label: i.name,
+        hint: `${i.type} • ${i.rarity} • ${i.assigned_to}`,
+        group: 'Inventario',
+        icon: Backpack,
+        tab: 'inventory' as PaletteTabId,
+      })),
     ];
 
     if (!q) return targets.slice(0, 40);
@@ -150,7 +160,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       .sort((a, b) => b.score - a.score)
       .slice(0, 40)
       .map(x => x.target);
-  }, [query, notes, monsters, spells, npcs, partyNames, combatants]);
+  }, [query, notes, monsters, spells, npcs, partyNames, combatants, items]);
 
   useEffect(() => {
     setActive(0);
@@ -217,11 +227,11 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               type="text"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Saltar a una nota, monstruo, NPC, hechizo o sección…"
+              placeholder="Saltar a una nota, monstruo, NPC, hechizo, objeto o sección…"
               aria-label="Buscar en la campaña"
               className="flex-1 bg-transparent py-3.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
             />
-            <kbd className="hidden sm:flex items-center gap-1 text-[10px] text-slate-500 border border-dungeon-700 rounded px-1.5 py-0.5 font-mono">
+            <kbd className="hidden sm:flex items-center gap-1 text-micro text-slate-500 border border-dungeon-700 rounded px-1.5 py-0.5 font-mono">
               <Command className="w-3 h-3" /> K
             </kbd>
           </div>
@@ -240,7 +250,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               return (
                 <React.Fragment key={target.key}>
                   {showGroup && (
-                    <li className="px-2 pt-2.5 pb-1 text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                    <li className="px-2 pt-2.5 pb-1 text-micro uppercase tracking-widest text-slate-500 font-bold">
                       {target.group}
                     </li>
                   )}
@@ -256,7 +266,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                       <Icon className={`w-4 h-4 shrink-0 ${index === active ? 'text-amber-400' : 'text-slate-500'}`} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold truncate">{target.label}</span>
-                        <span className="block text-[11px] text-slate-500 truncate">{target.hint}</span>
+                        <span className="block text-micro text-slate-500 truncate">{target.hint}</span>
                       </span>
                       {index === active && (
                         <CornerDownLeft className="w-3.5 h-3.5 text-amber-400 shrink-0" />

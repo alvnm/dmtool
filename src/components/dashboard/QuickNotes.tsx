@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DMNote } from '@/types';
 import { FileText, Plus, Pin, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
+import { useToast } from '@/components/Toast';
+import { EmptyState } from '@/components/EmptyState';
 
 interface QuickNotesProps {
   notes: DMNote[];
@@ -17,6 +19,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
   onUpdateNotes,
   highlightNoteId,
 }) => {
+  const toast = useToast();
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -75,6 +78,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
     }
 
     setIsModalOpen(false);
+    toast.success(editingNoteId ? `Nota «${title}» actualizada.` : `Nota «${title}» guardada.`);
     setEditingNoteId(null);
     setTitle('');
     setContent('');
@@ -87,7 +91,11 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
   };
 
   const handleDelete = (id: string) => {
+    const target = notes.find(n => n.id === id);
+    if (!target) return;
+    if (!window.confirm(`¿Eliminar la nota «${target.title}»? Esta acción no se puede deshacer.`)) return;
     onUpdateNotes(notes.filter(n => n.id !== id));
+    toast.success(`Nota «${target.title}» eliminada.`);
   };
 
   // Al saltar a una nota desde la paleta, la trae al centro del panel.
@@ -107,7 +115,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
 
         <button
           onClick={handleOpenAdd}
-          className="bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition flex items-center gap-1"
+          className="btn bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 px-3 py-1.5 flex items-center gap-1"
         >
           <Plus className="w-3.5 h-3.5" /> Nueva Nota
         </button>
@@ -129,6 +137,21 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
         ))}
       </div>
 
+      {filteredNotes.length === 0 ? (
+        <EmptyState
+          icon={FileText}
+          title={notes.length === 0 ? 'Sin notas de campaña' : 'Nada en esta categoría'}
+          description={
+            notes.length === 0
+              ? 'Anota nombres clave, pistas y recordatorios de sesión: se guardan en este navegador.'
+              : 'No hay notas de la categoría seleccionada.'
+          }
+          actionLabel={notes.length === 0 ? 'Nueva nota' : 'Ver todas'}
+          onAction={
+            notes.length === 0 ? handleOpenAdd : () => setSelectedCategory('Todas')
+          }
+        />
+      ) : (
       <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
         <AnimatePresence initial={false}>
         {filteredNotes.map(n => (
@@ -156,7 +179,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleOpenEdit(n)}
-                  className="p-1 text-slate-500 hover:text-amber-400 rounded transition"
+                  className="btn btn-icon text-slate-400 hover:text-amber-400"
                   title="Editar nota" aria-label="Editar nota"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
@@ -170,7 +193,7 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
                 </button>
                 <button
                   onClick={() => handleDelete(n.id)}
-                  className="p-1 text-slate-500 hover:text-red-400 rounded"
+                  className="btn btn-icon text-slate-400 hover:text-red-400"
                   title="Eliminar nota" aria-label="Eliminar nota"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -189,34 +212,35 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
         ))}
         </AnimatePresence>
       </div>
+      )}
 
       {/* Modal Add Note */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="card p-6 max-w-md w-full shadow-2xl space-y-4">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
               {editingNoteId ? 'Editar Nota de Campaña' : 'Nueva Nota de Campaña'}
             </h3>
 
             <form onSubmit={handleSaveNote} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Título</label>
+                <label className="label">Título</label>
                 <input
                   type="text"
                   required
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Ej: Pista de la biblioteca / Contraseña del templo"
-                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                  className="input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Categoría</label>
+                <label className="label">Categoría</label>
                 <select
                   value={category}
                   onChange={e => setCategory(e.target.value as any)}
-                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                  className="input"
                 >
                   {CATEGORIES.filter(c => c !== 'Todas').map(c => (
                     <option key={c} value={c}>{c}</option>
@@ -225,14 +249,14 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Contenido de la Nota</label>
+                <label className="label">Contenido de la Nota</label>
                 <textarea
                   rows={4}
                   required
                   value={content}
                   onChange={e => setContent(e.target.value)}
                   placeholder="Detalles importantes para la sesión..."
-                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none resize-none"
+                  className="input resize-none"
                 />
               </div>
 
@@ -253,13 +277,13 @@ export const QuickNotes: React.FC<QuickNotesProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-dungeon-800 transition"
+                  className="btn px-4 py-2 text-sm text-slate-400 hover:bg-dungeon-800"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
+                  className="btn btn-primary text-sm"
                 >
                   {editingNoteId ? 'Actualizar Nota' : 'Guardar Nota'}
                 </button>

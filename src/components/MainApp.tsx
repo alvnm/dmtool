@@ -13,6 +13,7 @@ import { useCampaignData } from '@/lib/useCampaignData';
 import { sortCombatants, monsterToCombatant } from '@/lib/combat';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useI18n } from '@/lib/i18n';
+import type { TranslationKey } from '@/lib/i18n';
 import { Globe } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import dynamic from 'next/dynamic';
@@ -39,6 +40,16 @@ const Toolbox = dynamic(() => import('@/components/tools/Toolbox').then(m => m.T
 const SettingsModal = dynamic(() => import('@/components/settings/SettingsModal').then(m => m.SettingsModal), { ssr: false });
 const CommandPalette = dynamic(() => import('@/components/CommandPalette').then(m => m.CommandPalette), { ssr: false });
 
+type NavGroupId = 'session' | 'party' | 'content' | 'loot';
+
+/** Orden de los grupos en la barra lateral. */
+const NAV_GROUPS: Array<{ id: NavGroupId; labelKey: TranslationKey }> = [
+  { id: 'session', labelKey: 'groupSession' },
+  { id: 'party', labelKey: 'groupParty' },
+  { id: 'content', labelKey: 'groupContent' },
+  { id: 'loot', labelKey: 'groupLoot' },
+];
+
 export default function MainApp() {
   const { t, language, toggleLanguage } = useI18n();
   // Datos + nube: toda la carga/fusión vive en useCampaignData.
@@ -52,6 +63,7 @@ export default function MainApp() {
     notes, setNotes,
     party, setParty,
     supabaseActive, userEmail,
+    initialLoading,
     syncStatus, syncError,
     storageAlert, dismissStorageAlert,
     getCampaign, exportCampaign, importCampaign, reloadConnection,
@@ -120,15 +132,20 @@ export default function MainApp() {
     success(`¡${monster.name} añadido a iniciativa!`);
   };
 
-  const NAV_ITEMS: Array<{ id: PaletteTabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard },
-    { id: 'initiative', label: t('initiative'), icon: Swords },
-    { id: 'inventory', label: t('inventory'), icon: Backpack },
-    { id: 'monsters', label: t('monsters'), icon: Skull },
-    { id: 'npcs', label: t('npcs'), icon: Users },
-    { id: 'spells', label: t('spells'), icon: BookOpen },
-    { id: 'party', label: t('party'), icon: UserCheck },
-    { id: 'treasure', label: t('treasure'), icon: Gift },
+  const NAV_ITEMS: Array<{
+    id: PaletteTabId;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    group: NavGroupId;
+  }> = [
+    { id: 'dashboard', label: t('dashboard'), icon: LayoutDashboard, group: 'session' },
+    { id: 'initiative', label: t('initiative'), icon: Swords, group: 'session' },
+    { id: 'party', label: t('party'), icon: UserCheck, group: 'party' },
+    { id: 'npcs', label: t('npcs'), icon: Users, group: 'party' },
+    { id: 'monsters', label: t('monsters'), icon: Skull, group: 'content' },
+    { id: 'spells', label: t('spells'), icon: BookOpen, group: 'content' },
+    { id: 'inventory', label: t('inventory'), icon: Backpack, group: 'loot' },
+    { id: 'treasure', label: t('treasure'), icon: Gift, group: 'loot' },
   ];
 
   const activeLabel = NAV_ITEMS.find(i => i.id === activeTab)?.label ?? 'Panel';
@@ -183,6 +200,7 @@ export default function MainApp() {
             npcs={npcs}
             spells={spells}
             notes={notes}
+            party={party}
             highlightNoteId={highlightNoteId}
             onUpdateNotes={setNotes}
             onSelectTab={setActiveTab}
@@ -192,16 +210,92 @@ export default function MainApp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-dungeon-950 text-slate-100">
+    <div className="min-h-screen bg-dungeon-950 text-slate-100">
+      {/* Barra de carga inicial: compendio SRD + nube descargando */}
+      {initialLoading && (
+        <div
+          className="fixed top-0 inset-x-0 z-[80] h-1 bg-dungeon-800/60 overflow-hidden"
+          role="status"
+          aria-label="Cargando datos de la campaña"
+        >
+          <motion.div
+            className="h-full w-1/3 rounded-full bg-gradient-to-r from-amber-600 via-amber-300 to-amber-600"
+            initial={{ x: '-110%' }}
+            animate={{ x: '320%' }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+          />
+        </div>
+      )}
+      {/* Barra lateral de secciones (desktop). En Focus Mode desaparece. */}
+      {!focusMode && (
+        <aside className="hidden lg:flex fixed inset-y-0 left-0 z-40 w-56 flex-col bg-dungeon-900 border-r border-dungeon-800">
+          {/* Marca */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('dashboard')}
+            title={t('dashboard')}
+            aria-label={t('dashboard')}
+            className="btn flex items-center gap-3 px-4 h-16 shrink-0 border-b border-dungeon-800 group"
+          >
+            <div className="w-9 h-9 rounded-xl overflow-hidden border border-amber-500/30 group-hover:border-amber-400 flex items-center justify-center bg-dungeon-950 transition">
+              <img src="/icon-192.png" alt="" aria-hidden="true" className="w-full h-full object-cover" />
+            </div>
+            <span className="font-serif text-base text-amber-400 tracking-wide">DM Companion</span>
+          </button>
+
+          {/* Secciones agrupadas: la sesión primero, luego personajes, contenido y botín */}
+          <nav
+            className="flex-1 overflow-y-auto p-3 space-y-4"
+            aria-label="Secciones de la campaña"
+          >
+            {NAV_GROUPS.map(group => (
+              <div key={group.id}>
+                <p className="px-3 pb-1.5 text-micro uppercase tracking-widest text-slate-500 font-bold">
+                  {t(group.labelKey)}
+                </p>
+                <div className="space-y-1">
+                  {NAV_ITEMS.filter(item => item.group === group.id).map(item => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold whitespace-nowrap transition ${
+                          isActive
+                            ? 'bg-amber-500 text-slate-950 shadow-md'
+                            : 'text-slate-400 hover:text-slate-100 hover:bg-dungeon-800'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          {/* Atajo de búsqueda */}
+          <div className="p-3 border-t border-dungeon-800 flex items-center justify-between gap-2 text-micro text-slate-500">
+            <span>Busca al vuelo</span>
+            <kbd className="font-mono border border-dungeon-700 rounded px-1.5 py-0.5">Ctrl K</kbd>
+          </div>
+        </aside>
+      )}
+
+      <div className={`flex min-h-screen flex-col ${focusMode ? '' : 'lg:pl-56'}`}>
       {/* Top Navbar (oculta en Focus Mode para maximizar espacio en la mesa) */}
       {!focusMode && (
       <header className="bg-dungeon-900 border-b border-dungeon-800 sticky top-0 z-40 shadow-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 gap-2">
+          <div className="flex items-center justify-between lg:justify-end h-16 gap-2">
             {/* Botón Inicio / Logo */}
             <button
               type="button"
-              className="flex items-center cursor-pointer shrink-0 group rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              className="btn flex items-center cursor-pointer shrink-0 group rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/50 lg:hidden"
               onClick={() => setActiveTab('dashboard')}
               title={t('dashboard')} aria-label={t('dashboard')}
             >
@@ -211,7 +305,7 @@ export default function MainApp() {
             </button>
 
             {/* Navigation Tabs */}
-            <nav className="hidden md:flex items-center space-x-1 overflow-x-auto py-1 scrollbar-none flex-1 justify-center min-w-0">
+            <nav className="hidden md:flex lg:hidden items-center space-x-1 overflow-x-auto py-1 scrollbar-none flex-1 justify-center min-w-0">
               {NAV_ITEMS.map(item => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -236,17 +330,17 @@ export default function MainApp() {
             <div className="flex items-center gap-1.5 pl-1 shrink-0">
               <button
                 onClick={() => setPaletteOpen(true)}
-                className="hidden sm:flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
-                title={t("searchTooltip")}
+                className="btn btn-secondary flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
+                title={t("searchTooltip")} aria-label={t("searchTooltip")}
               >
                 <Search className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">{t("search")}</span>
-                <kbd className="hidden lg:inline text-[10px] font-mono border border-dungeon-600 rounded px-1">Ctrl K</kbd>
+                <kbd className="hidden lg:inline text-micro font-mono border border-dungeon-600 rounded px-1">Ctrl K</kbd>
               </button>
 
               <button
               onClick={exportCampaign}
-              className="hidden sm:flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
+              className="btn btn-secondary hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
               title={t("downloadTooltip")} aria-label={t("downloadTooltip")}
               >
                 <Download className="w-3.5 h-3.5" />
@@ -257,7 +351,7 @@ export default function MainApp() {
                 type="button"
                 onClick={toggleLanguage}
                 title={t('langTooltip')}
-                className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-full bg-dungeon-800 text-slate-300 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 transition"
+                className="btn btn-secondary flex items-center gap-1 px-2.5 py-1 rounded-full"
               >
                 <Globe className="w-3.5 h-3.5 text-amber-400" />
                 <span>{language.toUpperCase()}</span>
@@ -266,6 +360,27 @@ export default function MainApp() {
               <ThemeToggle />
 
               {/* Estado de sincronización en la nube */}
+              {supabaseActive && (
+                <span
+                  className={`hidden xl:flex items-center gap-1.5 text-micro px-2.5 py-1 rounded-full font-medium border ${
+                    syncStatus === 'error'
+                      ? 'bg-red-950 text-red-300 border-red-800'
+                      : syncStatus === 'saving'
+                      ? 'bg-dungeon-800 text-slate-300 border-dungeon-700'
+                      : syncStatus === 'saved'
+                      ? 'bg-emerald-950/70 text-emerald-300 border-emerald-800'
+                      : 'bg-dungeon-800 text-slate-400 border-dungeon-700'
+                  }`}
+                  title={syncStatus === 'error' && syncError ? `Error de sincronización: ${syncError}` : undefined}
+                >
+                  {syncStatus === 'saving' && (
+                    <><Loader2 className="w-3 h-3 animate-spin" /> Sincronizando…</>
+                  )}
+                  {syncStatus === 'error' && <>⚠ Error de sync</>}
+                  {syncStatus === 'saved' && <>✓ Sincronizado</>}
+                  {syncStatus === 'idle' && <>En espera…</>}
+                </span>
+              )}
               
 
               {/* Estado del almacenamiento + acceso a ajustes */}
@@ -290,7 +405,7 @@ export default function MainApp() {
 
               <button
                 onClick={() => setFocusMode(true)}
-                className="flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-400 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-2.5 py-1.5 rounded-full font-medium transition"
+                className="btn btn-secondary flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
                 title={t("focusTooltip")}
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -301,7 +416,7 @@ export default function MainApp() {
                 <button
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="flex items-center gap-1.5 text-xs bg-dungeon-800 text-slate-300 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 px-3 py-1.5 rounded-full font-medium transition disabled:opacity-60"
+                  className="btn btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-full disabled:opacity-60"
                   title="Cerrar sesión"
                 >
                   <LogOut className="w-3.5 h-3.5" /> <span className="hidden md:inline">{t("logout")}</span>
@@ -348,13 +463,13 @@ export default function MainApp() {
             <div className="flex items-center gap-2">
               <button
                 onClick={exportCampaign}
-                className="bg-amber-500 text-slate-950 font-bold px-3 py-1 rounded-lg text-xs hover:bg-amber-450 transition"
+                className="btn btn-primary px-3 py-1"
               >
                 Descargar Respaldo JSON
               </button>
               <button
                 onClick={dismissStorageAlert}
-                className="text-amber-400 hover:text-amber-200 font-bold px-2 py-1" aria-label="Descartar aviso"
+                className="btn text-amber-400 hover:text-amber-200 px-2 py-1" aria-label="Descartar aviso"
               >
                 ✕
               </button>
@@ -388,21 +503,21 @@ export default function MainApp() {
           </span>
           <button
             onClick={() => setPaletteOpen(true)}
-            className="p-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-dungeon-800 transition min-w-[40px] min-h-[40px] flex items-center justify-center"
+            className="btn p-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-dungeon-800 min-w-[40px] min-h-[40px] flex items-center justify-center"
             title="Buscador rápido (Ctrl + K)" aria-label="Buscador rápido (Ctrl + K)"
           >
             <Search className="w-4 h-4" />
           </button>
           <button
             onClick={() => setSettingsOpen(true)}
-            className="p-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-dungeon-800 transition min-w-[40px] min-h-[40px] flex items-center justify-center"
+            className="btn p-2 rounded-full text-slate-400 hover:text-slate-100 hover:bg-dungeon-800 min-w-[40px] min-h-[40px] flex items-center justify-center"
             title="Ajustes" aria-label="Ajustes"
           >
             <Settings className="w-4 h-4" />
           </button>
           <button
             onClick={() => setFocusMode(false)}
-            className="flex items-center gap-1.5 bg-amber-500 text-slate-950 text-xs font-bold px-3 py-2 rounded-full transition min-h-[40px]"
+            className="btn flex items-center gap-1.5 bg-amber-500 text-slate-950 px-3 py-2 rounded-full min-h-[40px]"
             title={t("exitFocus")}
           >
             <Minimize2 className="w-4 h-4" /> {t("exitFocus")}
@@ -433,6 +548,7 @@ export default function MainApp() {
         spells={spells}
         npcs={npcs}
         partyNames={party.map(p => p.name)}
+        items={items}
         combatants={combatants}
       />
 
@@ -445,6 +561,7 @@ export default function MainApp() {
         </div>
       </footer>
       )}
+      </div>
     </div>
   );
 }

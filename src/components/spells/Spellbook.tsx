@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { Spell } from '@/types';
+import { useToast } from '@/components/Toast';
+import { EmptyState } from '@/components/EmptyState';
 import { 
   BookOpen, Plus, Search, Sparkles, Wand2, 
   Trash2, Clock, Target, Layers
@@ -16,6 +18,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
   spells,
   onUpdateSpells,
 }) => {
+  const toast = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLevel, setSelectedLevel] = useState<string>('Todos');
   const [selectedSchool, setSelectedSchool] = useState<string>('Todas');
@@ -96,6 +99,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
 
     onUpdateSpells([...spells, newSpell]);
     setIsModalOpen(false);
+    toast.success(`Hechizo «${name}» añadido al grimorio.`);
     resetForm();
   };
 
@@ -112,7 +116,11 @@ export const Spellbook: React.FC<SpellbookProps> = ({
   };
 
   const handleDelete = (id: string) => {
+    const target = spells.find(s => s.id === id);
+    if (!target) return;
+    if (!window.confirm(`¿Eliminar «${target.name}» del grimorio? Esta acción no se puede deshacer.`)) return;
     onUpdateSpells(spells.filter(s => s.id !== id));
+    toast.success(`«${target.name}» eliminado del grimorio.`);
   };
 
   const getSchoolBadgeColor = (sch: string) => {
@@ -131,10 +139,10 @@ export const Spellbook: React.FC<SpellbookProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="card flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg text-indigo-400">
-            <BookOpen className="w-6 h-6" />
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <BookOpen className="w-6 h-6 text-indigo-400" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-100">Biblioteca y Grimorio de Hechizos</h2>
@@ -150,7 +158,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
               placeholder="Buscar conjuro por nombre o efecto..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+              className="input pl-9 pr-4 py-2"
             />
           </div>
         </div>
@@ -178,7 +186,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg transition"
+            className="btn btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Nuevo Hechizo
@@ -187,11 +195,28 @@ export const Spellbook: React.FC<SpellbookProps> = ({
       </div>
 
       {/* Grid of Spell Cards */}
+      {filteredSpells.length === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title={spells.length === 0 ? 'El grimorio está vacío' : 'Sin resultados'}
+          description={
+            spells.length === 0
+              ? 'Aún no hay conjuros: revisa la conexión o crea el primero desde «Nuevo Hechizo».'
+              : 'Ningún conjuro coincide con la búsqueda, el nivel o la escuela seleccionados.'
+          }
+          actionLabel="Limpiar filtros"
+          onAction={() => {
+            setSearchTerm('');
+            setSelectedLevel('Todos');
+            setSelectedSchool('Todas');
+          }}
+        />
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {visibleSpells.map(spell => (
           <div
             key={spell.id}
-            className="bg-dungeon-900 border border-dungeon-800 hover:border-dungeon-700 rounded-xl p-5 shadow-lg space-y-4 flex flex-col justify-between transition"
+            className="card card-interactive hover:border-dungeon-700 space-y-4 flex flex-col justify-between"
           >
             <div>
               <div className="border-b border-dungeon-800 pb-3 flex items-start justify-between">
@@ -201,7 +226,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
                     {spell.level === 0 ? 'Truco (Cantrip)' : `Nivel ${spell.level}`} • {spell.school}
                   </p>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getSchoolBadgeColor(spell.school)}`}>
+                <span className={`text-micro font-bold px-2 py-0.5 rounded border ${getSchoolBadgeColor(spell.school)}`}>
                   {spell.school}
                 </span>
               </div>
@@ -232,7 +257,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
             <div className="flex items-center justify-between border-t border-dungeon-800 pt-3 text-xs">
               <div className="flex flex-wrap gap-1">
                 {spell.classes.map(cls => (
-                  <span key={cls} className="bg-dungeon-950 text-slate-400 border border-dungeon-800 px-2 py-0.5 rounded text-[10px]">
+                  <span key={cls} className="bg-dungeon-950 text-slate-400 border border-dungeon-800 px-2 py-0.5 rounded text-micro">
                     {cls}
                   </span>
                 ))}
@@ -240,7 +265,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
 
               <button
                 onClick={() => handleDelete(spell.id)}
-                className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
+                className="btn btn-icon text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                 title="Eliminar de la biblioteca" aria-label="Eliminar de la biblioteca"
               >
                 <Trash2 className="w-4 h-4" />
@@ -249,13 +274,14 @@ export const Spellbook: React.FC<SpellbookProps> = ({
           </div>
         ))}
       </div>
+      )}
 
       {/* Paginación: mostrar más conjuros del grimorio */}
       {filteredSpells.length > visibleSpells.length && (
         <div className="flex justify-center">
           <button
             onClick={() => setVisibleCount(c => c + 60)}
-            className="flex items-center gap-2 bg-dungeon-900 hover:bg-dungeon-800 border border-dungeon-700 text-slate-300 hover:text-amber-400 text-sm font-semibold px-5 py-2.5 rounded-lg transition"
+            className="btn flex items-center gap-2 bg-dungeon-900 hover:bg-dungeon-800 border border-dungeon-700 text-slate-300 hover:text-amber-400 text-sm px-5 py-2.5"
           >
             Mostrar más conjuros ({visibleSpells.length} de {filteredSpells.length})
           </button>
@@ -265,7 +291,7 @@ export const Spellbook: React.FC<SpellbookProps> = ({
       {/* Modal Add Spell */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="card p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
               Registrar Nuevo Hechizo / Conjuro
             </h3>
@@ -273,36 +299,36 @@ export const Spellbook: React.FC<SpellbookProps> = ({
             <form onSubmit={handleSaveSpell} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nombre del Hechizo</label>
+                  <label className="label">Nombre del Hechizo</label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="Ej: Bola de Fuego"
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nivel (0 = Truco)</label>
+                  <label className="label">Nivel (0 = Truco)</label>
                   <input
                     type="number"
                     min="0"
                     max="9"
                     value={level}
                     onChange={e => setLevel(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Escuela de Magia</label>
+                  <label className="label">Escuela de Magia</label>
                   <select
                     value={school}
                     onChange={e => setSchool(e.target.value)}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    className="input"
                   >
                     {SCHOOLS.filter(s => s !== 'Todas').map(s => (
                       <option key={s} value={s}>{s}</option>
@@ -310,70 +336,70 @@ export const Spellbook: React.FC<SpellbookProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Tiempo de Casteo</label>
+                  <label className="label">Tiempo de Casteo</label>
                   <input
                     type="text"
                     value={castingTime}
                     onChange={e => setCastingTime(e.target.value)}
                     placeholder="1 Acción, 1 Reacción..."
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Alcance</label>
+                  <label className="label">Alcance</label>
                   <input
                     type="text"
                     value={range}
                     onChange={e => setRange(e.target.value)}
                     placeholder="60 ft, Toque..."
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Componentes</label>
+                  <label className="label">Componentes</label>
                   <input
                     type="text"
                     value={components}
                     onChange={e => setComponents(e.target.value)}
                     placeholder="V, S, M"
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Duración</label>
+                  <label className="label">Duración</label>
                   <input
                     type="text"
                     value={duration}
                     onChange={e => setDuration(e.target.value)}
                     placeholder="Instantáneo, 1 min..."
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Clases que pueden aprenderlo</label>
+                <label className="label">Clases que pueden aprenderlo</label>
                 <input
                   type="text"
                   value={selectedClassesStr}
                   onChange={e => setSelectedClassesStr(e.target.value)}
                   placeholder="Mago, Clérigo, Bardo..."
-                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                  className="input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Descripción Completa del Hechizo</label>
+                <label className="label">Descripción Completa del Hechizo</label>
                 <textarea
                   rows={4}
                   required
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Efectos del conjuro, daño, dados de salvación..."
-                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none resize-none"
+                  className="input resize-none"
                 />
               </div>
 
@@ -381,13 +407,13 @@ export const Spellbook: React.FC<SpellbookProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-dungeon-800 transition"
+                  className="btn px-4 py-2 text-sm text-slate-400 hover:bg-dungeon-800"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
+                  className="btn btn-primary text-sm"
                 >
                   Crear Hechizo
                 </button>

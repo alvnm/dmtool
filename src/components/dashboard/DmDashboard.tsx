@@ -7,7 +7,7 @@ import {
   ArrowRight, Heart, Maximize2, Shield, UserCheck, Flame, Compass, Coins, Sparkles
 } from 'lucide-react';
 import { QuickNotes } from './QuickNotes';
-import { Combatant, InventoryItem, Monster, NPC, Spell, DMNote } from '@/types';
+import { Combatant, InventoryItem, Monster, NPC, PartyMember, Spell, DMNote } from '@/types';
 
 interface DmDashboardProps {
   combatants: Combatant[];
@@ -16,6 +16,7 @@ interface DmDashboardProps {
   npcs: NPC[];
   spells: Spell[];
   notes: DMNote[];
+  party: PartyMember[];
   /** Nota resaltada desde la paleta de comandos (Ctrl+K). */
   highlightNoteId?: string | null;
   onUpdateNotes: (notes: DMNote[]) => void;
@@ -29,6 +30,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
   npcs,
   spells,
   notes,
+  party,
   highlightNoteId,
   onUpdateNotes,
   onSelectTab,
@@ -95,6 +97,44 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Primera sesión: guía rápida mientras el grupo esté vacío */}
+      {party.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+          className="bg-gradient-to-r from-amber-950/70 via-dungeon-900 to-dungeon-900 border border-amber-500/40 rounded-xl p-4 sm:p-5 shadow-lg flex flex-wrap items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-4 min-w-0">
+            <div className="p-3 bg-amber-500/15 border border-amber-500/30 rounded-xl shrink-0">
+              <Sparkles className="w-6 h-6 text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-slate-100">¿Preparando la primera sesión?</h2>
+              <p className="text-xs text-slate-400 mt-0.5 max-w-xl">
+                Aún no hay personajes en el grupo. Crea las fichas de tus jugadores (CA, PV y percepción pasiva) y luego añade enemigos a la iniciativa cuando empiece el encuentro.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            <button
+              onClick={() => onSelectTab('party')}
+              className="btn btn-primary flex items-center gap-1.5 px-3 py-2 text-sm shadow"
+            >
+              <UserCheck className="w-4 h-4" />
+              Crear ficha de PJ
+            </button>
+            <button
+              onClick={() => onSelectTab('monsters')}
+              className="btn btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm"
+            >
+              <Skull className="w-4 h-4" />
+              Explorar bestiario
+            </button>
+          </div>
+        </motion.div>
+      )}
+
       {/* Quick Tool Navigation Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {CARDS.map((card, index) => {
@@ -110,7 +150,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
               transition={{ duration: 0.25, delay: index * 0.05, ease: 'easeOut' }}
               whileHover={{ y: -4, transition: { duration: 0.15 } }}
               whileTap={{ scale: 0.97 }}
-              className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer transition shadow-md group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-dungeon-950"
+              className="btn bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/50 rounded-xl p-4 cursor-pointer shadow-md group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-dungeon-950"
             >
               <div className="flex items-center justify-between mb-2">
                 <div
@@ -127,8 +167,8 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
               <h3 className="font-bold text-slate-100 text-sm group-hover:text-amber-400 transition">
                 {card.title}
               </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">{card.detail}</p>
-              <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition">
+              <p className="text-micro text-slate-400 mt-0.5">{card.detail}</p>
+              <span className="mt-2 inline-flex items-center gap-1 text-micro font-semibold text-amber-400 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition">
                 {card.cta} <ArrowRight className="w-3 h-3" />
               </span>
             </motion.button>
@@ -145,7 +185,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
           <div>
             <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               Resumen de la Sesión
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-semibold">
+              <span className="text-micro bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded font-mono font-semibold">
                 Activa
               </span>
             </h2>
@@ -163,7 +203,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
           </div>
           <button
             onClick={() => onSelectTab('initiative')}
-            className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-450 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs shadow transition"
+            className="btn btn-primary flex items-center gap-1.5 px-3 py-1.5 shadow"
           >
             <Swords className="w-3.5 h-3.5" />
             {combatants.length > 0 ? 'Ir al Combate' : 'Iniciar Encuentro'}
@@ -174,25 +214,25 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
       {/* Main Grid: Active Combat Preview + DM Notes */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2 cols): Active Combat Overview */}
-        <div className="lg:col-span-2 space-y-4 bg-dungeon-900 border border-dungeon-800 rounded-xl p-5 shadow-lg">
+        <div className="card lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between border-b border-dungeon-800 pb-3 gap-2 flex-wrap">
             <h3 className="font-bold text-slate-100 flex items-center gap-2">
               <Swords className="w-5 h-5 text-amber-400" />
               Estado del Combate Activo
               {wounded > 0 && (
-                <span className="text-[10px] bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-semibold">
+                <span className="text-micro bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-semibold">
                   {wounded} heridos
                 </span>
               )}
               {unconscious > 0 && (
-                <span className="text-[10px] bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-full font-semibold">
+                <span className="text-micro bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-full font-semibold">
                   {unconscious} caídos
                 </span>
               )}
             </h3>
             <button
               onClick={() => onSelectTab('initiative')}
-              className="text-xs text-amber-400 hover:underline flex items-center gap-1 font-semibold"
+              className="btn text-amber-400 hover:underline flex items-center gap-1"
             >
               <Maximize2 className="w-3.5 h-3.5" /> Abrir Rastreador
             </button>
@@ -203,7 +243,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
               <p>No hay combate activo en este momento.</p>
               <button
                 onClick={() => onSelectTab('initiative')}
-                className="inline-flex items-center gap-1.5 text-xs text-amber-400 hover:text-amber-300 underline font-semibold"
+                className="btn inline-flex items-center gap-1.5 text-amber-400 hover:text-amber-300 underline"
               >
                 + Preparar o lanzar iniciativa
               </button>
@@ -262,7 +302,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
                           <div className="flex items-center gap-2 text-slate-400 mt-0.5">
                             <span>AC: {c.ac}</span>
                             {c.conditions.length > 0 && (
-                              <span className="text-purple-300 text-[10px]">
+                              <span className="text-purple-300 text-micro">
                                 • {c.conditions.slice(0, 2).join(', ')}{c.conditions.length > 2 ? '…' : ''}
                               </span>
                             )}
@@ -304,7 +344,7 @@ export const DmDashboard: React.FC<DmDashboardProps> = ({
         </div>
 
         {/* Right Column (1 col): DM Notes */}
-        <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-5 shadow-lg">
+        <div className="card">
           <QuickNotes notes={notes} onUpdateNotes={onUpdateNotes} highlightNoteId={highlightNoteId} />
         </div>
       </div>

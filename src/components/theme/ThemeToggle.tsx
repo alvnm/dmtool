@@ -56,7 +56,7 @@ export const ThemeToggle: React.FC = () => {
       aria-pressed={isParchment}
       aria-label={isParchment ? t('themeLight') : t('themeDark')}
       title={isParchment ? t('themeLightActive') : t('themeDarkActive')}
-      className="flex items-center justify-center p-1.5 rounded-full bg-dungeon-800 text-slate-300 border border-dungeon-700 hover:text-slate-100 hover:bg-dungeon-700 transition"
+      className="btn btn-secondary flex items-center justify-center p-1.5 rounded-full"
     >
       {isParchment ? (
         <Moon className="w-3.5 h-3.5 text-amber-400" />

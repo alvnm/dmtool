@@ -6,6 +6,8 @@ import { formatMod } from '@/lib/combat';
 import { StatBlockFields, defaultStatBlock } from '@/components/statblock/StatBlockFields';
 import { StatBlockCard } from '@/components/statblock/StatBlockCard';
 import { exportMonster, parseCreatures, readFileText } from '@/lib/statblockJson';
+import { useToast } from '@/components/Toast';
+import { EmptyState } from '@/components/EmptyState';
 import { 
   Skull, Plus, Search, Shield, Heart, Zap, 
   Swords, Trash2, Download, Upload
@@ -22,6 +24,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
   onUpdateMonsters,
   onSendToCombat,
 }) => {
+  const toast = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCr, setSelectedCr] = useState<string>('Todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,6 +90,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
     onUpdateMonsters([...monsters, newMonster]);
     setIsModalOpen(false);
+    toast.success(`Monstruo «${name}» creado.`);
     resetForm();
   };
 
@@ -119,16 +123,20 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
   };
 
   const handleDelete = (id: string) => {
+    const target = monsters.find(m => m.id === id);
+    if (!target) return;
+    if (!window.confirm(`¿Eliminar a «${target.name}» del bestiario? Esta acción no se puede deshacer.`)) return;
     onUpdateMonsters(monsters.filter(m => m.id !== id));
+    toast.success(`«${target.name}» eliminado del bestiario.`);
   };
 
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="card flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
-            <Skull className="w-6 h-6" />
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <Skull className="w-6 h-6 text-red-400" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-100">Compendio de Monstruos y Bestiario</h2>
@@ -144,7 +152,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               placeholder="Buscar criatura por nombre o tipo..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+              className="input pl-9 pr-4 py-2"
             />
           </div>
         </div>          <div className="flex items-center gap-2">
@@ -162,7 +170,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
           <button
             type="button"
             onClick={() => importInputRef.current?.click()}
-            className="flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 border border-dungeon-700 text-slate-300 hover:text-amber-400 font-semibold px-3 py-2 rounded-lg text-sm transition"
+            className="btn btn-secondary flex items-center gap-2 hover:text-amber-400 px-3 py-2 text-sm"
             title="Importar criaturas desde un fichero JSON"
           >
             <Upload className="w-4 h-4" />
@@ -179,7 +187,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg transition"
+            className="btn btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Crear Monstruo
@@ -201,7 +209,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
             type="button"
             onClick={() => setImportMsg(null)}
             aria-label="Cerrar aviso de importación"
-            className="font-bold px-1 hover:opacity-70"
+            className="btn px-1 hover:opacity-70"
           >
             ✕
           </button>
@@ -209,11 +217,34 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
       )}
 
       {/* Grid of Monster Statblock Cards */}
+      {filteredMonsters.length === 0 ? (
+        <EmptyState
+          icon={Skull}
+          title={monsters.length === 0 ? 'El bestiario está vacío' : 'Sin resultados'}
+          description={
+            monsters.length === 0
+              ? 'El compendio aún no se ha cargado: crea una criatura a medida o revisa la conexión.'
+              : 'Ninguna criatura coincide con la búsqueda o el CR seleccionado.'
+          }
+          actionLabel={monsters.length === 0 ? 'Crear monstruo' : 'Limpiar filtros'}
+          onAction={
+            monsters.length === 0
+              ? () => {
+                  resetForm();
+                  setIsModalOpen(true);
+                }
+              : () => {
+                  setSearchTerm('');
+                  setSelectedCr('Todos');
+                }
+          }
+        />
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {visibleMonsters.map(m => (
           <div
             key={m.id}
-            className="bg-dungeon-900 border border-dungeon-800 hover:border-amber-500/40 rounded-xl p-5 shadow-lg space-y-4 flex flex-col justify-between transition"
+            className="card card-interactive hover:border-amber-500/40 space-y-4 flex flex-col justify-between"
           >
             <div>
               {/* Card Header */}
@@ -232,19 +263,19 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               {/* Core Vitals: AC, HP, Speed */}
               <div className="grid grid-cols-3 gap-2 text-center my-3 bg-dungeon-950/80 p-2.5 rounded-lg border border-dungeon-800">
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">Armadura</span>
+                  <span className="text-micro text-slate-500 uppercase font-semibold block">Armadura</span>
                   <span className="text-sm font-bold text-slate-200 flex items-center justify-center gap-1">
                     <Shield className="w-3.5 h-3.5 text-amber-400" /> {m.ac}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">Puntos de Vida</span>
+                  <span className="text-micro text-slate-500 uppercase font-semibold block">Puntos de Vida</span>
                   <span className="text-sm font-bold text-red-400 flex items-center justify-center gap-1">
                     <Heart className="w-3.5 h-3.5" /> {m.hp_max}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-semibold block">Velocidad</span>
+                  <span className="text-micro text-slate-500 uppercase font-semibold block">Velocidad</span>
                   <span className="text-xs font-bold text-slate-300 flex items-center justify-center gap-1">
                     <Zap className="w-3.5 h-3.5 text-blue-400" /> {m.speed}
                   </span>
@@ -257,14 +288,14 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                   <div key={statKey}>
                     <span className="text-[9px] uppercase font-bold text-amber-400">{statKey}</span>
                     <p className="text-xs font-bold text-slate-200">{val}</p>
-                    <span className="text-[10px] text-slate-400">{formatMod(val)}</span>
+                    <span className="text-micro text-slate-400">{formatMod(val)}</span>
                   </div>
                 ))}
               </div>
 
               {/* Actions Preview */}
               <div className="space-y-2 mt-3 text-xs text-slate-300">
-                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-micro border-b border-dungeon-800 pb-1">
                   Rasgos
                 </h4>
                 {m.traits.length > 0 ? (
@@ -280,7 +311,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               </div>
 
               <div className="space-y-2 mt-3 text-xs text-slate-300">
-                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+                <h4 className="font-bold text-amber-400 uppercase tracking-wider text-micro border-b border-dungeon-800 pb-1">
                   Acciones
                 </h4>
                 {m.actions.slice(0, 2).map((act, idx) => (
@@ -293,7 +324,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
               {(m.legendary?.length ?? 0) > 0 && (
                 <div className="space-y-2 mt-3 text-xs text-slate-300">
-                  <h4 className="font-bold text-purple-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+                  <h4 className="font-bold text-purple-400 uppercase tracking-wider text-micro border-b border-dungeon-800 pb-1">
                     Acciones legendarias
                   </h4>
                   {m.legendary!.map((act, idx) => (
@@ -310,7 +341,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
             <div className="flex items-center justify-between border-t border-dungeon-800 pt-3">
               <button
                 onClick={() => onSendToCombat(m)}
-                className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded transition"
+                className="btn flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 border border-amber-500/30 px-3 py-1.5"
               >
                 <Swords className="w-3.5 h-3.5" />
                 Llevar al Combate
@@ -319,14 +350,14 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => exportMonster(m)}
-                  className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition"
+                  className="btn btn-icon text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"
                   title="Exportar ficha en JSON" aria-label="Exportar ficha en JSON"
                 >
                   <Download className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(m.id)}
-                  className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
+                  className="btn btn-icon text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                   title="Eliminar de la lista" aria-label="Eliminar de la lista"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -336,13 +367,14 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
           </div>
         ))}
       </div>
+      )}
 
       {/* Paginación: mostrar más fichas del bestiario */}
       {filteredMonsters.length > visibleMonsters.length && (
         <div className="flex justify-center">
           <button
             onClick={() => setVisibleCount(c => c + 60)}
-            className="flex items-center gap-2 bg-dungeon-900 hover:bg-dungeon-800 border border-dungeon-700 text-slate-300 hover:text-amber-400 text-sm font-semibold px-5 py-2.5 rounded-lg transition"
+            className="btn flex items-center gap-2 bg-dungeon-900 hover:bg-dungeon-800 border border-dungeon-700 text-slate-300 hover:text-amber-400 text-sm px-5 py-2.5"
           >
             Mostrar más criaturas ({visibleMonsters.length} de {filteredMonsters.length})
           </button>
@@ -352,7 +384,7 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
       {/* Modal: Create Monster Form */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-4xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="card p-6 max-w-4xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
               Crear Nueva Criatura / Monstruo Personalizado
             </h3>
@@ -362,35 +394,35 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
               <div className="space-y-4 min-w-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nombre</label>
+                  <label className="label">Nombre</label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="Ej: Beholder / Minotauro del Abismo"
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Tipo de Criatura</label>
+                  <label className="label">Tipo de Criatura</label>
                   <input
                     type="text"
                     value={type}
                     onChange={e => setType(e.target.value)}
                     placeholder="Humanoide, Bestia, Aberración..."
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Tamaño</label>
+                  <label className="label">Tamaño</label>
                   <select
                     value={size}
                     onChange={e => setSize(e.target.value)}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-xs text-slate-200 focus:border-amber-500/50 focus:outline-none"
+                    className="input text-xs"
                   >
                     <option value="Pequeño">Pequeño</option>
                     <option value="Mediano">Mediano</option>
@@ -400,13 +432,13 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Alineación</label>
+                  <label className="label">Alineación</label>
                   <input
                     type="text"
                     value={alignment}
                     onChange={e => setAlignment(e.target.value)}
                     placeholder="Neutral Malvado"
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500/50 focus:outline-none"
+                    className="input"
                   />
                 </div>
               </div>
@@ -464,13 +496,13 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-dungeon-800 transition"
+                  className="btn px-4 py-2 text-sm text-slate-400 hover:bg-dungeon-800"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
+                  className="btn btn-primary text-sm"
                 >
                   Guardar Monstruo
                 </button>

@@ -5,6 +5,8 @@ import { NPC, NPC_DISPOSITIONS, StatBlock } from '@/types';
 import { StatBlockFields, defaultStatBlock } from '@/components/statblock/StatBlockFields';
 import { StatBlockCard } from '@/components/statblock/StatBlockCard';
 import { exportNpc, parseCreatures, readFileText } from '@/lib/statblockJson';
+import { useToast } from '@/components/Toast';
+import { EmptyState } from '@/components/EmptyState';
 import { 
   Users, Plus, Search, MapPin, Eye, EyeOff, 
   Trash2, Edit2, ShieldAlert, HeartHandshake, UserCheck, Flame,
@@ -20,6 +22,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
   npcs,
   onUpdateNpcs,
 }) => {
+  const toast = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDisposition, setSelectedDisposition] = useState<string>('Todas');
   const [revealedSecrets, setRevealedSecrets] = useState<{ [id: string]: boolean }>({});
@@ -123,6 +126,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
     }
 
     setIsModalOpen(false);
+    toast.success(editingNpc ? `NPC «${name}» actualizado.` : `NPC «${name}» creado.`);
   };
 
   /** Importa NPCs desde un JSON (objeto suelto, envoltorio o array). */
@@ -145,7 +149,11 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
   };
 
   const handleDelete = (id: string) => {
+    const target = npcs.find(n => n.id === id);
+    if (!target) return;
+    if (!window.confirm(`¿Eliminar al NPC «${target.name}»? Esta acción no se puede deshacer.`)) return;
     onUpdateNpcs(npcs.filter(n => n.id !== id));
+    toast.success(`NPC «${target.name}» eliminado.`);
   };
 
   const getDispositionBadge = (disp: NPC['disposition']) => {
@@ -161,10 +169,10 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner & Filters */}
-      <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="card flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg text-purple-400">
-            <Users className="w-6 h-6" />
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <Users className="w-6 h-6 text-purple-400" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-100">Gestor de NPCs y Aliados</h2>
@@ -180,7 +188,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
               placeholder="Buscar NPC por nombre, raza o ubicación..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+              className="input pl-9 pr-4 py-2"
             />
           </div>
         </div>
@@ -199,7 +207,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
           <button
             type="button"
             onClick={() => importInputRef.current?.click()}
-            className="flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 border border-dungeon-700 text-slate-300 hover:text-amber-400 font-semibold px-3 py-2 rounded-lg text-sm transition"
+            className="btn btn-secondary flex items-center gap-2 hover:text-amber-400 px-3 py-2 text-sm"
             title="Importar NPCs desde un fichero JSON"
           >
             <Upload className="w-4 h-4" />
@@ -216,7 +224,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
 
           <button
             onClick={handleOpenAdd}
-            className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg transition"
+            className="btn btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Crear NPC
@@ -238,7 +246,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
             type="button"
             onClick={() => setImportMsg(null)}
             aria-label="Cerrar aviso de importación"
-            className="font-bold px-1 hover:opacity-70"
+            className="btn px-1 hover:opacity-70"
           >
             ✕
           </button>
@@ -246,6 +254,26 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
       )}
 
       {/* Grid of NPC Cards */}
+      {filteredNpcs.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title={npcs.length === 0 ? 'Aún no hay NPCs' : 'Sin resultados'}
+          description={
+            npcs.length === 0
+              ? 'Crea a los mercaderes, informadores y villanos de tu campaña, con sus secretos.'
+              : 'Ningún NPC coincide con la búsqueda o la disposición seleccionada.'
+          }
+          actionLabel={npcs.length === 0 ? 'Crear NPC' : 'Limpiar filtros'}
+          onAction={
+            npcs.length === 0
+              ? handleOpenAdd
+              : () => {
+                  setSearchTerm('');
+                  setSelectedDisposition('Todas');
+                }
+          }
+        />
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredNpcs.map(npc => {
           const dispBadge = getDispositionBadge(npc.disposition);
@@ -255,7 +283,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
           return (
             <div
               key={npc.id}
-              className="bg-dungeon-900 border border-dungeon-800 hover:border-dungeon-700 rounded-xl p-5 shadow-lg space-y-4 flex flex-col justify-between transition"
+              className="card card-interactive hover:border-dungeon-700 space-y-4 flex flex-col justify-between"
             >
               <div>
                 {/* Header */}
@@ -266,7 +294,7 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
                       {npc.race} • {npc.alignment}
                     </p>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${dispBadge.color}`}>
+                  <span className={`text-micro font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${dispBadge.color}`}>
                     <IconComponent className="w-3 h-3" />
                     {dispBadge.label}
                   </span>
@@ -283,14 +311,14 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
 
                   {npc.background && (
                     <div>
-                      <span className="text-slate-500 font-semibold block uppercase text-[10px]">Trasfondo:</span>
+                      <span className="text-slate-500 font-semibold block uppercase text-micro">Trasfondo:</span>
                       <p className="text-slate-300">{npc.background}</p>
                     </div>
                   )}
 
                   {npc.personality && (
                     <div>
-                      <span className="text-slate-500 font-semibold block uppercase text-[10px]">Personalidad:</span>
+                      <span className="text-slate-500 font-semibold block uppercase text-micro">Personalidad:</span>
                       <p className="text-slate-300 italic">{npc.personality}</p>
                     </div>
                   )}
@@ -299,24 +327,24 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
                 {/* Bloque de combate opcional */}
                 {npc.statblock && (
                   <div className="mt-3 pt-3 border-t border-dungeon-800 space-y-2">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider flex items-center gap-1">
+                    <span className="text-micro text-slate-500 font-semibold uppercase tracking-wider flex items-center gap-1">
                       <Swords className="w-3 h-3 text-amber-400" /> Bloque de combate
                     </span>
                     <div className="grid grid-cols-4 gap-2 text-center bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-xs">
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase block">CA</span>
+                        <span className="text-micro text-slate-500 uppercase block">CA</span>
                         <strong className="text-slate-200">{npc.statblock.ac}</strong>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase block">PV</span>
+                        <span className="text-micro text-slate-500 uppercase block">PV</span>
                         <strong className="text-red-400">{npc.statblock.hp_max}</strong>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase block">Vel.</span>
+                        <span className="text-micro text-slate-500 uppercase block">Vel.</span>
                         <strong className="text-slate-300">{npc.statblock.speed}</strong>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase block">CR</span>
+                        <span className="text-micro text-slate-500 uppercase block">CR</span>
                         <strong className="text-amber-400">{npc.statblock.cr}</strong>
                       </div>
                     </div>
@@ -334,12 +362,12 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
                 {/* DM Secret Notes Section */}
                 <div className="mt-4 pt-3 border-t border-dungeon-800">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
+                    <span className="text-micro font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1">
                       🔒 Notas Secretas del DM
                     </span>
                     <button
                       onClick={() => toggleSecret(npc.id)}
-                      className="text-slate-400 hover:text-purple-300 text-xs flex items-center gap-1"
+                      className="btn text-slate-400 hover:text-purple-300 flex items-center gap-1"
                     >
                       {isSecretRevealed ? (
                         <>
@@ -367,21 +395,21 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
               <div className="flex items-center justify-end gap-1 border-t border-dungeon-800 pt-3">
                 <button
                   onClick={() => exportNpc(npc)}
-                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition"
+                  className="btn btn-icon text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"
                   title="Exportar NPC en JSON" aria-label="Exportar NPC en JSON"
                 >
                   <Download className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleOpenEdit(npc)}
-                  className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded transition"
+                  className="btn btn-icon text-slate-400 hover:text-amber-400 hover:bg-amber-500/10"
                   title="Editar NPC" aria-label="Editar NPC"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(npc.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded transition"
+                  className="btn btn-icon text-slate-400 hover:text-red-400 hover:bg-red-500/10"
                   title="Eliminar NPC" aria-label="Eliminar NPC"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -391,11 +419,12 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* Modal Add/Edit NPC */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-4xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="card p-6 max-w-4xl w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
               {editingNpc ? 'Editar Ficha de NPC' : 'Crear Nuevo NPC'}
             </h3>
@@ -415,36 +444,36 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
               <div className="space-y-3 min-w-0">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Nombre</label>
+                  <label className="label">Nombre</label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={e => setName(e.target.value)}
                     placeholder="Ej: Eladrin Vaelen"
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Raza</label>
+                  <label className="label">Raza</label>
                   <input
                     type="text"
                     required
                     value={race}
                     onChange={e => setRace(e.target.value)}
                     placeholder="Alto Elfo, Enano, Humano..."
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Afecto hacia la Party</label>
+                  <label className="label">Afecto hacia la Party</label>
                   <select
                     value={disposition}
                     onChange={e => setDisposition(e.target.value as NPC['disposition'])}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   >
                     {NPC_DISPOSITIONS.map(d => (
                       <option key={d} value={d}>{d}</option>
@@ -452,47 +481,47 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Ubicación</label>
+                  <label className="label">Ubicación</label>
                   <input
                     type="text"
                     value={location}
                     onChange={e => setLocation(e.target.value)}
                     placeholder="Ej: Taverna del Dragón"
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Alineamiento</label>
+                  <label className="label">Alineamiento</label>
                   <input
                     type="text"
                     value={alignment}
                     onChange={e => setAlignment(e.target.value)}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Trasfondo / Profesión</label>
+                  <label className="label">Trasfondo / Profesión</label>
                   <input
                     type="text"
                     value={background}
                     onChange={e => setBackground(e.target.value)}
                     placeholder="Erudito, Herrero, Alquimista..."
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Personalidad & Rasgos</label>
+                <label className="label">Personalidad & Rasgos</label>
                 <textarea
                   rows={2}
                   value={personality}
                   onChange={e => setPersonality(e.target.value)}
                   placeholder="Forma de hablar, tics, motivaciones..."
-                  className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none resize-none"
+                  className="input resize-none"
                 />
               </div>
 
@@ -561,13 +590,13 @@ export const NpcManager: React.FC<NpcManagerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-400 hover:bg-dungeon-800 transition"
+                  className="btn px-4 py-2 text-sm text-slate-400 hover:bg-dungeon-800"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-amber-500 hover:bg-amber-450 text-slate-950 transition"
+                  className="btn btn-primary text-sm"
                 >
                   {editingNpc ? 'Guardar Cambios' : 'Crear NPC'}
                 </button>

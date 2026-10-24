@@ -166,7 +166,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
         aria-label={open ? 'Cerrar herramientas del DM' : 'Abrir herramientas del DM (dados, sonidos, reglas, nombres y NPCs)'}
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
-        className="fixed z-50 bottom-4 right-4 mb-[env(safe-area-inset-bottom)] w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 shadow-xl shadow-amber-600/30 flex items-center justify-center border border-amber-400/60"
+        className="btn fixed z-50 bottom-4 right-4 mb-[env(safe-area-inset-bottom)] w-14 h-14 rounded-full bg-gradient-to-br text-slate-950 shadow-xl shadow-amber-600/30 flex items-center justify-center border border-amber-400/60"
         title="Herramientas del DM: dados, sonidos, reglas, nombres y NPC al vuelo"
       >
         {open ? <X className="w-6 h-6" /> : <Dices className="w-7 h-7" />}
@@ -245,11 +245,11 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                       onChange={e => setNotation(e.target.value)}
                       placeholder="2d6+3"
                       aria-label="Notación de tirada"
-                      className="flex-1 min-w-0 bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500 focus:outline-none font-mono"
+                      className="input flex-1 min-w-0 font-mono"
                     />
                     <button
                       type="submit"
-                      className="bg-amber-500 hover:bg-amber-450 text-slate-950 font-bold text-sm px-3 py-2 rounded-lg transition"
+                      className="btn btn-primary text-sm px-3"
                     >
                       Tirar
                     </button>
@@ -265,7 +265,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                         onClick={() => doRoll(`1d${sides}`)}
                         title={`Tira 1d${sides}`}
                         aria-label={`Tirar 1d${sides}`}
-                        className="text-[11px] font-bold px-3 py-2 rounded-md text-amber-300 bg-gradient-to-b from-dungeon-700 to-dungeon-950 border border-dungeon-600 shadow-[0_2px_0_#07080b,0_5px_10px_rgba(0,0,0,0.45)] hover:from-dungeon-600 hover:text-amber-200 active:translate-y-[2px] active:shadow-[0_0px_0_#07080b,0_2px_5px_rgba(0,0,0,0.4)] transition"
+                        className="btn text-micro px-3 py-2 rounded-md text-amber-300 bg-gradient-to-b border border-dungeon-600 shadow-[0_2px_0_#07080b,0_5px_10px_rgba(0,0,0,0.45)] hover:text-amber-200 active:translate-y-[2px] active:shadow-[0_0px_0_#07080b,0_2px_5px_rgba(0,0,0,0.4)]"
                       >
                         1d{sides}
                       </button>
@@ -275,14 +275,14 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                   <div className="grid grid-cols-2 gap-1.5">
                     <button
                       onClick={() => doD20WithMode('ventaja')}
-                      className="flex items-center justify-center gap-1.5 text-[11px] font-bold bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 py-2 rounded transition min-h-[40px]"
+                      className="btn flex items-center justify-center gap-1.5 text-micro bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 py-2 min-h-[40px]"
                       title="Tira 2d20 y quédate con el mayor"
                     >
                       1d20 Ventaja
                     </button>
                     <button
                       onClick={() => doD20WithMode('desventaja')}
-                      className="flex items-center justify-center gap-1.5 text-[11px] font-bold bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 py-2 rounded transition min-h-[40px]"
+                      className="btn flex items-center justify-center gap-1.5 text-micro bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-300 py-2 min-h-[40px]"
                       title="Tira 2d20 y quédate con el menor"
                     >
                       1d20 Desventaja
@@ -296,7 +296,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                         onClick={() => doRoll(n)}
                         title={`Tira ${n}`}
                         aria-label={`Tirar ${n}`}
-                        className="text-[11px] font-semibold px-3 py-2 rounded-md text-amber-300 bg-gradient-to-b from-amber-500/25 to-amber-500/5 border border-amber-500/40 shadow-[0_2px_0_rgba(0,0,0,0.5),0_5px_10px_rgba(0,0,0,0.35)] hover:from-amber-500/40 hover:text-amber-200 active:translate-y-[2px] active:shadow-[0_0px_0_rgba(0,0,0,0.5),0_2px_5px_rgba(0,0,0,0.3)] transition"
+                        className="btn text-micro px-3 py-2 rounded-md text-amber-300 bg-gradient-to-b border border-amber-500/40 shadow-[0_2px_0_rgba(0,0,0,0.5),0_5px_10px_rgba(0,0,0,0.35)] hover:text-amber-200 active:translate-y-[2px] active:shadow-[0_0px_0_rgba(0,0,0,0.5),0_2px_5px_rgba(0,0,0,0.3)]"
                       >
                         {n}
                       </button>
@@ -313,24 +313,24 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                         exit={{ opacity: 0 }}
                         className="bg-dungeon-950 border border-amber-500/40 rounded-lg p-3 text-center"
                       >
-                        <p className="text-[10px] uppercase tracking-widest text-slate-500">
+                        <p className="text-micro uppercase tracking-widest text-slate-500">
                           {history[0]?.notation ?? ''}
                         </p>
                         <p className="text-3xl font-black text-amber-400">{lastTotal}</p>
-                        <p className="text-[11px] text-slate-400 font-mono">{history[0]?.detail}</p>
+                        <p className="text-micro text-slate-400 font-mono">{history[0]?.detail}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
                   {/* Historial */}
                   <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] uppercase tracking-widest font-bold text-slate-500">
+                    <h4 className="text-micro uppercase tracking-widest font-bold text-slate-500">
                       Historial ({history.length})
                     </h4>
                     {history.length > 0 && (
                       <button
                         onClick={() => setHistory([])}
-                        className="text-[11px] text-slate-500 hover:text-red-400 flex items-center gap-1 transition"
+                        className="btn text-micro text-slate-500 hover:text-red-400 flex items-center gap-1"
                       >
                         <Trash2 className="w-3 h-3" /> Limpiar
                       </button>
@@ -348,7 +348,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                           className="flex items-center justify-between gap-2 bg-dungeon-950 border border-dungeon-800 rounded px-2 py-1.5 text-xs"
                         >
                           <span className="font-mono text-slate-400">{h.notation}</span>
-                          <span className="text-[10px] text-slate-500 font-mono truncate">{h.detail}</span>
+                          <span className="text-micro text-slate-500 font-mono truncate">{h.detail}</span>
                           <span className="font-bold text-amber-400">{h.total}</span>
                         </motion.li>
                       ))}
@@ -362,7 +362,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                       <button
                         key={pool.category}
                         onClick={() => setCategory(pool.category)}
-                        className={`text-[11px] px-2.5 py-1.5 rounded-full border transition ${
+                        className={`text-micro px-2.5 py-1.5 rounded-full border transition ${
                           category === pool.category
                             ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
                             : 'bg-dungeon-950 text-slate-400 border-dungeon-700 hover:text-slate-200'
@@ -373,11 +373,11 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                     ))}
                   </div>
 
-                  <p className="text-[11px] text-slate-500">{activePool.hint}</p>
+                  <p className="text-micro text-slate-500">{activePool.hint}</p>
 
                   <button
                     onClick={generateName}
-                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-lg transition"
+                    className="btn btn-primary w-full flex items-center justify-center gap-2 text-sm py-2.5"
                   >
                     <Wand2 className="w-4 h-4" /> Generar nombre
                   </button>
@@ -406,7 +406,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                   <button
                     onClick={copyName}
                     disabled={!generated}
-                    className="w-full flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
+                    className="btn w-full flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 disabled:opacity-50"
                   >
                     {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                     {copied ? 'Copiado' : 'Copiar nombre'}
@@ -421,13 +421,13 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                 <div className="space-y-3">
                   <button
                     onClick={generateNpc}
-                    className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-lg transition"
+                    className="btn btn-primary w-full flex items-center justify-center gap-2 text-sm py-2.5"
                   >
                     <Wand2 className="w-4 h-4" /> {quickNpc ? 'Otro NPC' : 'Generar NPC al vuelo'}
                   </button>
 
                   {!quickNpc ? (
-                    <p className="text-[11px] text-slate-500 text-center">
+                    <p className="text-micro text-slate-500 text-center">
                       ¿Los jugadores hablan con alguien improvisado? Un clic y tienes nombre,
                       raza, actitud y un secreto listo para soltar.
                     </p>
@@ -442,19 +442,19 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-serif text-lg font-bold text-amber-400 truncate">{quickNpc.name}</p>
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-micro text-slate-400">
                             {quickNpc.race} • {quickNpc.job}
                           </p>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded border shrink-0 bg-dungeon-900 text-slate-300 border-dungeon-700">
+                        <span className="text-micro font-bold px-2 py-0.5 rounded border shrink-0 bg-dungeon-900 text-slate-300 border-dungeon-700">
                           {quickNpc.disposition}
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-micro text-slate-400">
                         <span className="text-slate-500 font-semibold">Rasgo:</span> {quickNpc.trait}
                       </p>
-                      <p className="text-[11px] text-purple-300 bg-purple-950/50 border border-purple-900 rounded p-2">
+                      <p className="text-micro text-purple-300 bg-purple-950/50 border border-purple-900 rounded p-2">
                         <span className="font-bold">Secreto DM:</span> {quickNpc.secret_notes}
                       </p>
                     </motion.div>
@@ -464,14 +464,14 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                     <button
                       onClick={() => quickNpc && navigator.clipboard?.writeText(`${quickNpc.name} (${quickNpc.race}, ${quickNpc.job}) — ${quickNpc.disposition}\nRasgo: ${quickNpc.trait}\nSecreto: ${quickNpc.secret_notes}`).catch(() => {})}
                       disabled={!quickNpc}
-                      className="flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
+                      className="btn flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-slate-300 px-3 py-2 disabled:opacity-50"
                     >
                       <Copy className="w-3.5 h-3.5" /> Copiar
                     </button>
                     <button
                       onClick={saveQuickNpc}
                       disabled={!quickNpc || !onSaveNpc || npcSaved}
-                      className="flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-amber-300 text-xs font-semibold px-3 py-2 rounded-lg transition disabled:opacity-50"
+                      className="btn flex items-center justify-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 text-amber-300 px-3 py-2 disabled:opacity-50"
                       title="Añade el NPC a tu lista de personajes"
                     >
                       {npcSaved ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <UserPlus className="w-3.5 h-3.5" />}

@@ -193,7 +193,7 @@ export function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+              className="btn absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
               aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -241,7 +241,7 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-amber-500 hover:bg-amber-450 disabled:opacity-60 text-slate-950 font-semibold py-2.5 text-sm transition flex items-center justify-center gap-2"
+          className="btn btn-primary w-full disabled:opacity-60 py-2.5 text-sm flex items-center justify-center gap-2"
         >
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
           {loading
@@ -251,7 +251,7 @@ export function LoginForm() {
               : 'Entrar'}
         </button>
 
-        <p className="text-[11px] text-slate-500 leading-relaxed">
+        <p className="text-micro text-slate-500 leading-relaxed">
           Las contraseñas se almacenan con hash (Supabase Auth) y nunca en claro. Cada DM ve solo
           sus propias campañas. Tras 5 intentos fallidos la IP queda bloqueada temporalmente.
         </p>
