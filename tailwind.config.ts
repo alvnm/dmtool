@@ -38,6 +38,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // Variables inyectadas por next/font/local en <html>.
+        sans: ["var(--font-inter)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        serif: ["var(--font-cinzel)", "Georgia", "serif"],
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",

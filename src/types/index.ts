@@ -18,6 +18,21 @@ export interface MonsterTraitAction {
   desc: string;
 }
 
+/**
+ * Bloque de estadísticas 5e reutilizado por el creador de monstruos y por el
+ * NPC con bloque de combate opcional (mismos campos, misma UI, misma ficha).
+ */
+export interface StatBlock {
+  stats: MonsterStats;
+  ac: number;
+  hp_max: number;
+  speed: string;
+  cr: string;
+  traits: MonsterTraitAction[];
+  actions: MonsterTraitAction[];
+  legendary: MonsterTraitAction[];
+}
+
 export interface Monster {
   id: string;
   name: string;
@@ -31,6 +46,8 @@ export interface Monster {
   cr: string;
   actions: MonsterTraitAction[];
   traits: MonsterTraitAction[];
+  /** Acciones legendarias (opcional: solo criaturas con acceso legendary). */
+  legendary?: MonsterTraitAction[];
   isCustom?: boolean;
   created_at?: string;
 }
@@ -65,6 +82,8 @@ export interface NPC {
   disposition: NpcDisposition;
   location?: string;
   secret_notes?: string;
+  /** Bloque de combate opcional: presente solo si el DM lo configura. */
+  statblock?: StatBlock;
   created_at?: string;
 }
 

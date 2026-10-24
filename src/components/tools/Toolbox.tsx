@@ -2,14 +2,16 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dices, UserRound, X, Copy, Trash2, Wand2, Check, UserPlus, Users } from 'lucide-react';
+import { Dices, UserRound, X, Copy, Trash2, Wand2, Check, UserPlus, Users, Volume2, BookOpen } from 'lucide-react';
 import { roll, rollD20WithMode, type RollMode } from '@/lib/dice';
 import { NAME_POOLS, randomName, type NameCategory } from '@/lib/names';
 import { generateQuickNpc, type QuickNpc } from '@/lib/npcGenerator';
+import { Soundboard } from '@/components/tools/Soundboard';
+import { QuickRules } from '@/components/tools/QuickRules';
 import { NPC } from '@/types';
 import { usePersistentState } from '@/lib/usePersistentState';
 
-type TabId = 'dados' | 'nombres' | 'npc';
+type TabId = 'dados' | 'nombres' | 'npc' | 'sonidos' | 'reglas';
 
 interface HistoryEntry {
   id: number;
@@ -19,13 +21,13 @@ interface HistoryEntry {
 }
 
 const QUICK_ROLLS = ['1d20', '1d20+5', '1d20-2', '2d6+3', '4d6', '1d8', '1d100'];
-const DIE_BUTTONS = [4, 6, 8, 10, 12, 20];
+const DIE_BUTTONS = [4, 6, 8, 10, 12, 20, 100];
 const MAX_HISTORY = 25;
 
 /**
- * Toolbox flotante del DM: lanzador de dados con historial + generador de
- * nombres aleatorios + NPC improvisado al vuelo. El historial se guarda en
- * localStorage.
+ * Toolbox flotante del DM: lanzador de dados con historial + soundboard +
+ * referencia de reglas + generador de nombres + NPC improvisado al vuelo. El
+ * historial de tiradas se guarda en localStorage.
  */
 export interface ToolboxProps {
   /** Guarda un NPC generado al vuelo en la lista del DM. */
@@ -161,11 +163,11 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
         type="button"
         onClick={() => setOpen(prev => !prev)}
         aria-expanded={open}
-        aria-label={open ? 'Cerrar herramientas del DM' : 'Abrir herramientas del DM (dados, nombres y NPCs)'}
+        aria-label={open ? 'Cerrar herramientas del DM' : 'Abrir herramientas del DM (dados, sonidos, reglas, nombres y NPCs)'}
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.94 }}
         className="fixed z-50 bottom-4 right-4 mb-[env(safe-area-inset-bottom)] w-14 h-14 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 shadow-xl shadow-amber-600/30 flex items-center justify-center border border-amber-400/60"
-        title="Herramientas del DM: dados, nombres y NPC al vuelo"
+        title="Herramientas del DM: dados, sonidos, reglas, nombres y NPC al vuelo"
       >
         {open ? <X className="w-6 h-6" /> : <Dices className="w-7 h-7" />}
       </motion.button>
@@ -183,18 +185,34 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
             className="fixed z-50 bottom-20 right-4 mb-[env(safe-area-inset-bottom)] w-[min(22rem,calc(100vw-2rem))] max-h-[75vh] flex flex-col bg-dungeon-900 border border-dungeon-700 rounded-xl shadow-2xl overflow-hidden"
           >
             {/* Pestañas */}
-            <div className="flex border-b border-dungeon-800">
+            <div className="flex border-b border-dungeon-800 overflow-x-auto">
               <button
                 onClick={() => setTab('dados')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold transition ${
+                className={`flex-1 min-w-[4.5rem] shrink-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition ${
                   tab === 'dados' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <Dices className="w-4 h-4" /> Dados
               </button>
               <button
+                onClick={() => setTab('sonidos')}
+                className={`flex-1 min-w-[4.5rem] shrink-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition ${
+                  tab === 'sonidos' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Volume2 className="w-4 h-4" /> Sonido
+              </button>
+              <button
+                onClick={() => setTab('reglas')}
+                className={`flex-1 min-w-[4.5rem] shrink-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition ${
+                  tab === 'reglas' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" /> Reglas
+              </button>
+              <button
                 onClick={() => setTab('nombres')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold transition ${
+                className={`flex-1 min-w-[4.5rem] shrink-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition ${
                   tab === 'nombres' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -202,7 +220,7 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
               </button>
               <button
                 onClick={() => setTab('npc')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold transition ${
+                className={`flex-1 min-w-[4.5rem] shrink-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition ${
                   tab === 'npc' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -245,7 +263,9 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                       <button
                         key={sides}
                         onClick={() => doRoll(`1d${sides}`)}
-                        className="text-[11px] font-bold bg-dungeon-950 hover:bg-dungeon-800 border border-dungeon-700 text-amber-400 px-2.5 py-1.5 rounded transition"
+                        title={`Tira 1d${sides}`}
+                        aria-label={`Tirar 1d${sides}`}
+                        className="text-[11px] font-bold px-3 py-2 rounded-md text-amber-300 bg-gradient-to-b from-dungeon-700 to-dungeon-950 border border-dungeon-600 shadow-[0_2px_0_#07080b,0_5px_10px_rgba(0,0,0,0.45)] hover:from-dungeon-600 hover:text-amber-200 active:translate-y-[2px] active:shadow-[0_0px_0_#07080b,0_2px_5px_rgba(0,0,0,0.4)] transition"
                       >
                         1d{sides}
                       </button>
@@ -274,7 +294,9 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                       <button
                         key={n}
                         onClick={() => doRoll(n)}
-                        className="text-[11px] font-semibold bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 px-2.5 py-1.5 rounded transition"
+                        title={`Tira ${n}`}
+                        aria-label={`Tirar ${n}`}
+                        className="text-[11px] font-semibold px-3 py-2 rounded-md text-amber-300 bg-gradient-to-b from-amber-500/25 to-amber-500/5 border border-amber-500/40 shadow-[0_2px_0_rgba(0,0,0,0.5),0_5px_10px_rgba(0,0,0,0.35)] hover:from-amber-500/40 hover:text-amber-200 active:translate-y-[2px] active:shadow-[0_0px_0_rgba(0,0,0,0.5),0_2px_5px_rgba(0,0,0,0.3)] transition"
                       >
                         {n}
                       </button>
@@ -390,6 +412,10 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                     {copied ? 'Copiado' : 'Copiar nombre'}
                   </button>
                 </div>
+              ) : tab === 'sonidos' ? (
+                <Soundboard />
+              ) : tab === 'reglas' ? (
+                <QuickRules />
               ) : (
                 /* NPC improvisado al vuelo: nombre + raza + actitud + secreto. */
                 <div className="space-y-3">

@@ -1,5 +1,25 @@
 import type { Metadata, Viewport } from 'next';
+import localFont from 'next/font/local';
 import './globals.css';
+
+// Tipografía de la app: Inter (texto) y Cinzel (títulos), auto-alojadas desde
+// src/app/fonts con fallback ajustado para evitar saltos de layout.
+const inter = localFont({
+  src: [
+    { path: './fonts/Inter-Regular.ttf', weight: '400', style: 'normal' },
+    { path: './fonts/Inter-Bold.ttf', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-inter',
+  display: 'swap',
+  preload: true,
+});
+
+const cinzel = localFont({
+  src: [{ path: './fonts/Cinzel-Bold.ttf', weight: '700', style: 'normal' }],
+  variable: '--font-cinzel',
+  display: 'swap',
+  preload: true,
+});
 
 // URL canónica absoluta: en Vercel se usa la del despliegue (VERCEL_URL) si no
 // hay dominio configurado, para que og:image sea una URL absoluta válida.
@@ -91,7 +111,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="dark" data-theme="dungeon" suppressHydrationWarning>
+    <html
+      lang="es"
+      className={`dark ${inter.variable} ${cinzel.variable}`}
+      data-theme="dungeon"
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

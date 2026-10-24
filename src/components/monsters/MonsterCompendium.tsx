@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Monster } from '@/types';
+import React, { useRef, useState } from 'react';
+import { Monster, StatBlock } from '@/types';
 import { formatMod } from '@/lib/combat';
+import { StatBlockFields, defaultStatBlock } from '@/components/statblock/StatBlockFields';
+import { StatBlockCard } from '@/components/statblock/StatBlockCard';
+import { exportMonster, parseCreatures, readFileText } from '@/lib/statblockJson';
 import { 
   Skull, Plus, Search, Shield, Heart, Zap, 
-  Swords, Trash2
+  Swords, Trash2, Download, Upload
 } from 'lucide-react';
 
 interface MonsterCompendiumProps {
@@ -27,24 +30,14 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
   // para no montar cientos de tarjetas de golpe.
   const [visibleCount, setVisibleCount] = useState(60);
 
-  // Form State
+  // Form State (identidad de la criatura + bloque de estadísticas completo)
   const [name, setName] = useState('');
   const [size, setSize] = useState('Mediano');
   const [type, setType] = useState('Humanoide');
   const [alignment, setAlignment] = useState('Neutral Malvado');
-  const [ac, setAc] = useState(13);
-  const [hpMax, setHpMax] = useState(15);
-  const [speed, setSpeed] = useState('30 ft.');
-  const [cr, setCr] = useState('1');
-  const [str, setStr] = useState(10);
-  const [dex, setDex] = useState(10);
-  const [con, setCon] = useState(10);
-  const [int, setInt] = useState(10);
-  const [wis, setWis] = useState(10);
-  const [cha, setCha] = useState(10);
-  const [actionName, setActionName] = useState('');
-  const [actionDesc, setActionDesc] = useState('');
-  const [actionsList, setActionsList] = useState<{ name: string; desc: string }[]>([]);
+  const [sb, setSb] = useState<StatBlock>(defaultStatBlock());
+  const [importMsg, setImportMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const CR_OPTIONS = ['Todos', '1/8', '1/4', '1/2', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
 
@@ -69,13 +62,6 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
   // El cambio de filtros restaura la paginación visible.
   React.useEffect(() => { setVisibleCount(60); }, [searchTerm, selectedCr]);
 
-  const handleAddAction = () => {
-    if (!actionName.trim() || !actionDesc.trim()) return;
-    setActionsList([...actionsList, { name: actionName, desc: actionDesc }]);
-    setActionName('');
-    setActionDesc('');
-  };
-
   const handleSaveMonster = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -86,14 +72,15 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
       size,
       type,
       alignment,
-      ac: Number(ac),
-      hp_max: Number(hpMax),
-      speed,
-      stats: { str, dex, con, int, wis, cha },
-      cr,
-      traits: [],
+      ac: sb.ac,
+      hp_max: sb.hp_max,
+      speed: sb.speed,
+      stats: sb.stats,
+      cr: sb.cr,
+      traits: sb.traits,
       isCustom: true,
-      actions: actionsList.length > 0 ? actionsList : [
+      legendary: sb.legendary,
+      actions: sb.actions.length > 0 ? sb.actions : [
         { name: 'Ataque con Garrote', desc: '+3 al ataque, alcance 5 ft. Daño: 4 (1d6 + 1) contundente.' }
       ]
     };
@@ -108,17 +95,27 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
     setSize('Mediano');
     setType('Humanoide');
     setAlignment('Neutral Malvado');
-    setAc(13);
-    setHpMax(15);
-    setSpeed('30 ft.');
-    setCr('1');
-    setStr(10);
-    setDex(10);
-    setCon(10);
-    setInt(10);
-    setWis(10);
-    setCha(10);
-    setActionsList([]);
+    setSb(defaultStatBlock());
+    setImportMsg(null);
+  };
+
+  /** Importa criaturas desde un JSON (objeto suelto, envoltorio o array). */
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // permite reimportar el mismo archivo
+    if (!file) return;
+    try {
+      const text = await readFileText(file);
+      const result = parseCreatures(text, 'monster');
+      if (!result.ok) {
+        setImportMsg({ kind: 'error', text: result.error });
+        return;
+      }
+      onUpdateMonsters([...monsters, ...result.items]);
+      setImportMsg({ kind: 'ok', text: `Importadas ${result.items.length} criatura(s) desde JSON.` });
+    } catch (err) {
+      setImportMsg({ kind: 'error', text: err instanceof Error ? err.message : 'No se pudo leer el archivo.' });
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -163,6 +160,24 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
 
 
           <button
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+            className="flex items-center gap-2 bg-dungeon-800 hover:bg-dungeon-700 border border-dungeon-700 text-slate-300 hover:text-amber-400 font-semibold px-3 py-2 rounded-lg text-sm transition"
+            title="Importar criaturas desde un fichero JSON"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">Importar JSON</span>
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            aria-label="Seleccionar fichero JSON con criaturas"
+            onChange={handleImportFile}
+          />
+
+          <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg transition"
           >
@@ -171,6 +186,27 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
           </button>
         </div>
       </div>
+
+      {importMsg && (
+        <div
+          role="status"
+          className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg text-xs border ${
+            importMsg.kind === 'ok'
+              ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
+              : 'bg-red-950/60 border-red-800 text-red-300'
+          }`}
+        >
+          <span>{importMsg.text}</span>
+          <button
+            type="button"
+            onClick={() => setImportMsg(null)}
+            aria-label="Cerrar aviso de importación"
+            className="font-bold px-1 hover:opacity-70"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Grid of Monster Statblock Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -254,6 +290,20 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                   </div>
                 ))}
               </div>
+
+              {(m.legendary?.length ?? 0) > 0 && (
+                <div className="space-y-2 mt-3 text-xs text-slate-300">
+                  <h4 className="font-bold text-purple-400 uppercase tracking-wider text-[11px] border-b border-dungeon-800 pb-1">
+                    Acciones legendarias
+                  </h4>
+                  {m.legendary!.map((act, idx) => (
+                    <div key={idx} className="leading-snug">
+                      <span className="font-bold text-slate-100 italic">{act.name}. </span>
+                      <span className="text-slate-400">{act.desc}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Bottom Actions */}
@@ -266,13 +316,22 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                 Llevar al Combate
               </button>
 
-              <button
-                onClick={() => handleDelete(m.id)}
-                className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
-                title="Eliminar de la lista" aria-label="Eliminar de la lista"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => exportMonster(m)}
+                  className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded transition"
+                  title="Exportar ficha en JSON" aria-label="Exportar ficha en JSON"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(m.id)}
+                  className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition"
+                  title="Eliminar de la lista" aria-label="Eliminar de la lista"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -293,12 +352,14 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
       {/* Modal: Create Monster Form */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-dungeon-900 border border-dungeon-800 rounded-xl max-w-4xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-slate-100 border-b border-dungeon-800 pb-2">
               Crear Nueva Criatura / Monstruo Personalizado
             </h3>
 
             <form onSubmit={handleSaveMonster} className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_20rem] gap-4 items-start">
+              <div className="space-y-4 min-w-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">Nombre</label>
@@ -323,13 +384,13 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1">Tamaño</label>
                   <select
                     value={size}
                     onChange={e => setSize(e.target.value)}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-xs text-slate-200"
+                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-xs text-slate-200 focus:border-amber-500/50 focus:outline-none"
                   >
                     <option value="Pequeño">Pequeño</option>
                     <option value="Mediano">Mediano</option>
@@ -339,95 +400,64 @@ export const MonsterCompendium: React.FC<MonsterCompendiumProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Desafío (CR)</label>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">Alineación</label>
                   <input
                     type="text"
-                    value={cr}
-                    onChange={e => setCr(e.target.value)}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">AC</label>
-                  <input
-                    type="number"
-                    value={ac}
-                    onChange={e => setAc(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">HP Máximo</label>
-                  <input
-                    type="number"
-                    value={hpMax}
-                    onChange={e => setHpMax(Number(e.target.value))}
-                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200"
+                    value={alignment}
+                    onChange={e => setAlignment(e.target.value)}
+                    placeholder="Neutral Malvado"
+                    className="w-full bg-dungeon-950 border border-dungeon-800 rounded-lg p-2 text-sm text-slate-200 focus:border-amber-500/50 focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Attributes Input */}
-              <div className="bg-dungeon-950 p-3 rounded-lg border border-dungeon-800">
-                <label className="block text-xs font-bold text-amber-400 mb-2 uppercase">Atributos Principales</label>
-                <div className="grid grid-cols-6 gap-2">
-                  {[
-                    { label: 'STR', val: str, setter: setStr },
-                    { label: 'DEX', val: dex, setter: setDex },
-                    { label: 'CON', val: con, setter: setCon },
-                    { label: 'INT', val: int, setter: setInt },
-                    { label: 'WIS', val: wis, setter: setWis },
-                    { label: 'CHA', val: cha, setter: setCha },
-                  ].map(item => (
-                    <div key={item.label}>
-                      <span className="text-[10px] text-slate-400 block text-center">{item.label}</span>
-                      <input
-                        type="number"
-                        value={item.val}
-                        onChange={e => item.setter(Number(e.target.value))}
-                        className="w-full bg-dungeon-900 border border-dungeon-800 rounded text-center text-xs text-slate-200 py-1"
-                      />
-                    </div>
-                  ))}
-                </div>
+              {/* Bloque de estadísticas completo: atributos, CA/PV/vel/CR, rasgos,
+                  acciones y acciones legendarias (compartido con los NPCs). */}
+              <StatBlockFields value={sb} onChange={setSb} />
+
               </div>
 
-              {/* Add Action Subform */}
-              <div className="bg-dungeon-950 p-3 rounded-lg border border-dungeon-800 space-y-2">
-                <label className="block text-xs font-bold text-amber-400 uppercase">Agregar Acciones de Ataque</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nombre acción (ej: Garra)"
-                    value={actionName}
-                    onChange={e => setActionName(e.target.value)}
-                    className="bg-dungeon-900 border border-dungeon-800 text-xs rounded p-2 text-slate-200"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Descripción (+5 al ataque, 1d8+3 daño...)"
-                    value={actionDesc}
-                    onChange={e => setActionDesc(e.target.value)}
-                    className="bg-dungeon-900 border border-dungeon-800 text-xs rounded p-2 text-slate-200 md:col-span-2"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddAction}
-                  className="bg-dungeon-800 text-amber-300 hover:bg-dungeon-700 text-xs px-3 py-1 rounded font-semibold transition"
-                >
-                  + Añadir Acción
-                </button>
+              {/* Vista previa en vivo de la ficha (escritorio) */}
+              <div className="hidden lg:block sticky top-0">
+                <StatBlockCard
+                  preview
+                  data={{
+                    name,
+                    size,
+                    type,
+                    alignment,
+                    cr: sb.cr,
+                    ac: sb.ac,
+                    hp_max: sb.hp_max,
+                    speed: sb.speed,
+                    stats: sb.stats,
+                    traits: sb.traits,
+                    actions: sb.actions,
+                    legendary: sb.legendary,
+                  }}
+                />
+              </div>
+              </div>
 
-                {actionsList.length > 0 && (
-                  <div className="pt-2 space-y-1">
-                    {actionsList.map((act, i) => (
-                      <div key={i} className="text-xs bg-dungeon-900 p-2 rounded border border-dungeon-800 text-slate-300">
-                        <strong className="text-amber-400">{act.name}:</strong> {act.desc}
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* Vista previa en vivo de la ficha (móvil/tablet) */}
+              <div className="lg:hidden">
+                <StatBlockCard
+                  preview
+                  data={{
+                    name,
+                    size,
+                    type,
+                    alignment,
+                    cr: sb.cr,
+                    ac: sb.ac,
+                    hp_max: sb.hp_max,
+                    speed: sb.speed,
+                    stats: sb.stats,
+                    traits: sb.traits,
+                    actions: sb.actions,
+                    legendary: sb.legendary,
+                  }}
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-dungeon-800">
