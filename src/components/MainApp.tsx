@@ -574,12 +574,64 @@ export default function MainApp() {
 
       {/* Footer (oculto en Focus Mode) */}
       {!focusMode && (
-      <footer className="bg-dungeon-900 border-t border-dungeon-800 py-4 text-center text-xs text-slate-500">
+      <footer className="bg-dungeon-900 border-t border-dungeon-800 py-4 text-center text-xs text-slate-500 pb-16 md:pb-4">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>DM Companion App • Next.js App Router, Tailwind CSS & Supabase</p>
           <p className="text-slate-400">Listo para despliegue en Vercel</p>
         </div>
       </footer>
+      )}
+
+      {/* Barra de navegación inferior fija para móviles (Bottom Navigation Bar) */}
+      {!focusMode && (
+        <nav aria-label="Navegación móvil inferior" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-dungeon-950/95 backdrop-blur-lg border-t border-dungeon-800/80 px-2 py-1.5 flex items-center justify-around shadow-2xl">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg text-[10px] font-semibold transition ${
+              activeTab === 'dashboard' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>Panel</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('initiative')}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg text-[10px] font-semibold transition relative ${
+              activeTab === 'initiative' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Swords className="w-4 h-4" />
+            <span>Combate</span>
+            {combatants.length > 0 && (
+              <span className="absolute top-0 right-1 w-2 h-2 rounded-full bg-red-500" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('party')}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg text-[10px] font-semibold transition ${
+              activeTab === 'party' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>Grupo</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('inventory')}
+            className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg text-[10px] font-semibold transition ${
+              activeTab === 'inventory' ? 'text-amber-400' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Backpack className="w-4 h-4" />
+            <span>Objetos</span>
+          </button>
+          <button
+            onClick={() => setPaletteOpen(true)}
+            className="flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg text-[10px] font-semibold text-slate-400 hover:text-amber-400 transition"
+          >
+            <Search className="w-4 h-4" />
+            <span>Buscar</span>
+          </button>
+        </nav>
       )}
       </div>
     </div>
