@@ -2,16 +2,15 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dices, UserRound, X, Copy, Trash2, Wand2, Check, UserPlus, Users, Volume2, BookOpen } from 'lucide-react';
+import { Dices, UserRound, X, Copy, Trash2, Wand2, Check, UserPlus, Users, BookOpen } from 'lucide-react';
 import { roll, rollD20WithMode, type RollMode } from '@/lib/dice';
 import { NAME_POOLS, randomName, type NameCategory } from '@/lib/names';
 import { generateQuickNpc, type QuickNpc } from '@/lib/npcGenerator';
-import { Soundboard } from '@/components/tools/Soundboard';
 import { QuickRules } from '@/components/tools/QuickRules';
 import { NPC } from '@/types';
 import { usePersistentState } from '@/lib/usePersistentState';
 
-type TabId = 'dados' | 'nombres' | 'npc' | 'sonidos' | 'reglas';
+type TabId = 'dados' | 'nombres' | 'npc' | 'reglas';
 
 interface HistoryEntry {
   id: number;
@@ -193,14 +192,6 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                 }`}
               >
                 <Dices className="w-4 h-4" /> Dados
-              </button>
-              <button
-                onClick={() => setTab('sonidos')}
-                className={`flex-1 min-w-[4.5rem] shrink-0 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold transition ${
-                  tab === 'sonidos' ? 'text-amber-400 border-b-2 border-amber-500 bg-amber-500/5' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Volume2 className="w-4 h-4" /> Sonido
               </button>
               <button
                 onClick={() => setTab('reglas')}
@@ -412,8 +403,6 @@ export const Toolbox: React.FC<ToolboxProps> = ({ onSaveNpc }) => {
                     {copied ? 'Copiado' : 'Copiar nombre'}
                   </button>
                 </div>
-              ) : tab === 'sonidos' ? (
-                <Soundboard />
               ) : tab === 'reglas' ? (
                 <QuickRules />
               ) : (
